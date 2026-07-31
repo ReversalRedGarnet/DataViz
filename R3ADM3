@@ -1,0 +1,305 @@
+# Ripple
+### Climate Doesn't Create Inequality. It Reveals It.
+
+> An interactive data story exploring how climate change amplifies existing social and economic vulnerabilities across the Pacific.
+
+---
+
+## Overview
+
+Every Pacific nation experiences climate change differently.
+
+A cyclone making landfall in one community may be an inconvenience.
+
+The same cyclone elsewhere may interrupt education, destroy livelihoods, increase food insecurity, displace families, overwhelm healthcare systems, and prolong poverty for years.
+
+**Ripple** is an interactive climate visualization that explores these cascading effects using open Pacific datasets. Rather than presenting climate statistics in isolation, it models how environmental hazards interact with infrastructure, economics, public services, and communities.
+
+The goal is not to rank countries.
+
+The goal is to help people understand **why similar climate events lead to different outcomes.**
+
+---
+
+## Competition
+
+Project intended for the **2026 Pacific DataViz Challenge**
+
+Theme:
+> Climate Change
+
+---
+
+## Core Question
+
+> How do existing inequalities determine who suffers most from climate change?
+
+---
+
+## Guiding Principles
+
+- Data should tell a human story.
+- Climate change is a multiplier—not the sole cause—of social issues.
+- Every visualization should answer "why?" rather than simply showing "what."
+- Make complex systems understandable without oversimplifying them.
+- Focus on empathy through evidence.
+
+---
+
+## Main Experience
+
+Users explore climate vulnerability through an interactive narrative.
+
+Instead of reading a report, they investigate interconnected systems.
+
+### Example journey
+
+Choose a community
+
+↓
+
+Choose a climate event
+
+↓
+
+Observe direct impacts
+
+↓
+
+Explore secondary effects
+
+↓
+
+Understand long-term consequences
+
+↓
+
+Compare another community
+
+↓
+
+Reflect on why recovery differs
+
+---
+
+## Proposed Sections
+
+### 1. The Pacific Today
+
+Introduction to:
+
+- Pacific geography
+- Climate trends
+- Sea-level rise
+- Temperature anomalies
+- Extreme weather
+
+---
+
+### 2. The Hazard
+
+Visualize events such as
+
+- Cyclones
+- Floods
+- Droughts
+- Coastal erosion
+- Saltwater intrusion
+
+---
+
+### 3. Ripple Effects
+
+Show how a single event propagates through society.
+
+Example
+
+Cyclone
+
+↓
+
+Roads damaged
+
+↓
+
+Markets inaccessible
+
+↓
+
+Food prices increase
+
+↓
+
+Nutrition declines
+
+↓
+
+Health worsens
+
+↓
+
+School attendance drops
+
+↓
+
+Long-term opportunity decreases
+
+---
+
+### 4. Climate Vulnerability Explorer
+
+Compare countries or communities across dimensions such as
+
+- Exposure
+- Sensitivity
+- Adaptive capacity
+- Infrastructure
+- Healthcare
+- Education
+- Food security
+- Fisheries
+- Agriculture
+- Economic resilience
+
+Rather than asking
+
+> Which country is worst?
+
+Ask
+
+> Why are communities affected differently?
+
+---
+
+### 5. Recovery
+
+Explore
+
+- rebuilding timelines
+- adaptation strategies
+- renewable energy
+- resilience investments
+- community preparedness
+
+---
+
+## Data Sources
+
+Potential datasets include
+
+- Pacific Data Hub
+- SPC (Pacific Community)
+- World Bank Open Data
+- UNDP
+- FAO
+- WHO
+- EM-DAT Disaster Database
+- NASA
+- NOAA
+- WorldPop
+- Climate Watch
+
+---
+
+## Technical Stack
+
+### Data
+
+- Python
+- Pandas
+- GeoPandas
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+
+### Visualization
+
+- D3.js
+- Observable Plot
+- Plotly
+- Leaflet / MapLibre
+
+### Mapping
+
+- GeoJSON
+- TopoJSON
+
+### Styling
+
+- Tailwind CSS
+
+---
+
+## Stretch Goals
+
+- Animated cause-and-effect networks
+- Time slider
+- Accessibility-first design
+- Mobile responsive layout
+- Story mode
+- Exploration mode
+- Compare two communities
+- Downloadable reports
+- Citation panel for every visualization
+
+---
+
+## Design Philosophy
+
+This project intentionally avoids overwhelming users with dashboards.
+
+Instead it focuses on:
+
+- exploration
+- storytelling
+- interaction
+- systems thinking
+
+Every chart should answer a question.
+
+Every interaction should reveal a relationship.
+
+Every section should help users understand why climate impacts differ across communities.
+
+---
+
+## Current Status
+
+Planning
+
+- [ ] Research official datasets
+- [ ] Define project scope
+- [ ] Design information architecture
+- [ ] Create wireframes
+- [ ] Build data pipeline
+- [ ] Develop interactive visualizations
+- [ ] User testing
+- [ ] Final polish
+- [ ] Competition submission
+
+---
+
+## Vision
+
+Climate hazards are natural.
+
+Disasters are shaped by society.
+
+**Ripple** seeks to make those connections visible.
+
+Not to tell people what to think—
+
+but to help them understand the systems that determine who bears the greatest burden of a changing climate.
+
+---
+
+## Author
+
+**Aziel Douglas Orihao**
+
+Information Systems | Climate Justice | Data Storytelling | Pacific Technology
+
+*"The most important stories in data aren't the numbers themselves—they're the people whose lives those numbers represent."*
