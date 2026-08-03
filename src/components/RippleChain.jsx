@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { METRICS } from '../utils/metrics.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
+import { resetSvg } from '../utils/d3helpers.js'
 import Section from './Section.jsx'
 import SelectionLegend from './SelectionLegend.jsx'
+import EmptyState from './EmptyState.jsx'
 
 // The connected sequence view: one small chart per stage of the chain,
 // filtered to whichever nation(s) are selected on the map. Chart
@@ -16,22 +18,9 @@ import SelectionLegend from './SelectionLegend.jsx'
 //     MapView. Order matters here: it drives which colour each nation
 //     gets, kept in sync with the map's numbered badges.
 export default function RippleChain({ data, selectedNations }) {
-  if (!data) {
-    return (
-      <Section>
-        <p className="text-sm opacity-60">Ripple chain -- waiting on data.</p>
-      </Section>
-    )
-  }
-
+  if (!data) return <EmptyState>Ripple chain -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length === 0) {
-    return (
-      <Section>
-        <p className="text-sm opacity-60">
-          Click a country on the map above to see its ripple chain.
-        </p>
-      </Section>
-    )
+    return <EmptyState>Click a country on the map above to see its ripple chain.</EmptyState>
   }
 
   return (
@@ -63,9 +52,7 @@ function MetricChart({ title, allRows, nations, valueField }) {
     const height = 170
     const margin = { top: 8, right: 12, bottom: 20, left: 44 }
 
-    const svg = d3.select(ref.current)
-    svg.selectAll('*').remove()
-    svg.attr('viewBox', `0 0 ${width} ${height}`)
+    const svg = resetSvg(ref, width, height)
 
     // Colour is assigned by SELECTION ORDER (nations[0], nations[1]),
     // not by data-encounter order, so it always matches the map's 1 / 2
