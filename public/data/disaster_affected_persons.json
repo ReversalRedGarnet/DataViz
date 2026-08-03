@@ -1,0 +1,10 @@
+[
+  { "nation": "Nation A", "year": 2022, "affected_persons": 500 },
+  { "nation": "Nation A", "year": 2023, "affected_persons": 42000 },
+  { "nation": "Nation A", "year": 2024, "affected_persons": 3200 },
+  { "nation": "Nation A", "year": 2025, "affected_persons": 400 },
+  { "nation": "Nation B", "year": 2022, "affected_persons": 600 },
+  { "nation": "Nation B", "year": 2023, "affected_persons": 38000 },
+  { "nation": "Nation B", "year": 2024, "affected_persons": 21000 },
+  { "nation": "Nation B", "year": 2025, "affected_persons": 9000 }
+]
