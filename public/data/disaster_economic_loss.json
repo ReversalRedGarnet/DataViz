@@ -1,0 +1,10 @@
+[
+  { "nation": "Nation A", "year": 2022, "economic_loss_usd_million": 4 },
+  { "nation": "Nation A", "year": 2023, "economic_loss_usd_million": 120 },
+  { "nation": "Nation A", "year": 2024, "economic_loss_usd_million": 22 },
+  { "nation": "Nation A", "year": 2025, "economic_loss_usd_million": 5 },
+  { "nation": "Nation B", "year": 2022, "economic_loss_usd_million": 3 },
+  { "nation": "Nation B", "year": 2023, "economic_loss_usd_million": 95 },
+  { "nation": "Nation B", "year": 2024, "economic_loss_usd_million": 60 },
+  { "nation": "Nation B", "year": 2025, "economic_loss_usd_million": 34 }
+]
