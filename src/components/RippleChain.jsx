@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { METRICS } from '../utils/metrics.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
+import { resetSvg } from '../utils/d3helpers.js'
 import Section from './Section.jsx'
 import SelectionLegend from './SelectionLegend.jsx'
+import EmptyState from './EmptyState.jsx'
 
 // The connected sequence view: one small chart per stage of the chain,
 // filtered to whichever nation(s) are selected on the map. Chart
@@ -16,22 +18,9 @@ import SelectionLegend from './SelectionLegend.jsx'
 //     MapView. Order matters here: it drives which colour each nation
 //     gets, kept in sync with the map's numbered badges.
 export default function RippleChain({ data, selectedNations }) {
-  if (!data) {
-    return (
-      <Section>
-        <p className="text-sm opacity-60">Ripple chain -- waiting on data.</p>
-      </Section>
-    )
-  }
-
+  if (!data) return <EmptyState>Ripple chain -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length === 0) {
-    return (
-      <Section>
-        <p className="text-sm opacity-60">
-          Click a country on the map above to see its ripple chain.
-        </p>
-      </Section>
-    )
+    return <EmptyState>Click a country on the map above to see its ripple chain.</EmptyState>
   }
 
   return (
@@ -63,9 +52,7 @@ function MetricChart({ title, allRows, nations, valueField }) {
     const height = 170
     const margin = { top: 8, right: 12, bottom: 20, left: 44 }
 
-    const svg = d3.select(ref.current)
-    svg.selectAll('*').remove()
-    svg.attr('viewBox', `0 0 ${width} ${height}`)
+    const svg = resetSvg(ref, width, height)
 
     // Colour is assigned by SELECTION ORDER (nations[0], nations[1]),
     // not by data-encounter order, so it always matches the map's 1 / 2
@@ -111,6 +98,21 @@ function MetricChart({ title, allRows, nations, valueField }) {
         .attr('stroke', color(nation))
         .attr('stroke-width', 2)
         .attr('d', line)
+
+      // Small hoverable point per data value -- native <title> gives a
+      // tooltip with the exact number on hover/focus, and is read by
+      // screen readers too.
+      svg
+        .selectAll(`circle.point-${nation.replace(/\s+/g, '')}`)
+        .data(series)
+        .join('circle')
+        .attr('cx', (d) => x(d.year))
+        .attr('cy', (d) => y(d[valueField]))
+        .attr('r', 3)
+        .attr('fill', color(nation))
+        .style('cursor', 'default')
+        .append('title')
+        .text((d) => `${nation}, ${d.year}: ${d[valueField]}`)
     }
   }, [allRows, nations, valueField])
 
@@ -118,6 +120,27 @@ function MetricChart({ title, allRows, nations, valueField }) {
     <div>
       <h3 className="text-sm font-medium mb-1">{title}</h3>
       <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
+      {/* Screen-reader-only data table -- the chart above conveys shape
+          and trend visually, this gives the same numbers as text. */}
+      <table className="sr-only">
+        <caption>{title} by year and country</caption>
+        <thead>
+          <tr>
+            <th scope="col">Country</th>
+            <th scope="col">Year</th>
+            <th scope="col">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allRows.map((d) => (
+            <tr key={`${d.nation}-${d.year}`}>
+              <td>{d.nation}</td>
+              <td>{d.year}</td>
+              <td>{d[valueField]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

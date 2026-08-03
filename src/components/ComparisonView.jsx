@@ -1,6 +1,7 @@
 import { METRICS } from '../utils/metrics.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
 import Section from './Section.jsx'
+import EmptyState from './EmptyState.jsx'
 
 // Side-by-side view of the currently selected nations across each stage
 // of the ripple chain, comparing the event year against the latest year
@@ -13,20 +14,9 @@ import Section from './Section.jsx'
 const EVENT_YEAR = 2023
 
 export default function ComparisonView({ data, selectedNations }) {
-  if (!data) {
-    return (
-      <Section tone="sun">
-        <p className="text-sm opacity-60">Comparison -- waiting on data.</p>
-      </Section>
-    )
-  }
-
+  if (!data) return <EmptyState tone="sun">Comparison -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length < 2) {
-    return (
-      <Section tone="sun">
-        <p className="text-sm opacity-60">Select a second country on the map to compare.</p>
-      </Section>
-    )
+    return <EmptyState tone="sun">Select a second country on the map to compare.</EmptyState>
   }
 
   return (
