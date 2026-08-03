@@ -1,17 +1,16 @@
 import { METRICS } from '../utils/metrics.js'
 
-// Side-by-side view of the two nations across each stage of the ripple
-// chain, comparing the event year against the latest year on record.
-// Replaces the full vulnerability-dimension explorer from the original
-// brainstorm -- see README.md -> "Scope (locked)".
+// Side-by-side view of the currently selected nations across each stage
+// of the ripple chain, comparing the event year against the latest year
+// on record. Replaces the full vulnerability-dimension explorer from the
+// original brainstorm -- see README.md -> "Scope (locked)".
 //
 // Props:
-//   countryA, countryB -- nation identifiers (currently DUMMY placeholders
-//     set in App.jsx -- replace once the real pair is locked)
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
+//   selectedNations -- array of nation names selected in MapView
 const EVENT_YEAR = 2023
 
-export default function ComparisonView({ countryA, countryB, data }) {
+export default function ComparisonView({ data, selectedNations }) {
   if (!data) {
     return (
       <section className="px-6 py-12">
@@ -20,10 +19,19 @@ export default function ComparisonView({ countryA, countryB, data }) {
     )
   }
 
+  if (!selectedNations || selectedNations.length < 2) {
+    return (
+      <section className="px-6 py-12">
+        <p className="text-sm opacity-60">Select a second country on the map to compare.</p>
+      </section>
+    )
+  }
+
   return (
     <section className="px-6 py-12 grid md:grid-cols-2 gap-8">
-      <NationSummary nation={countryA} data={data} />
-      <NationSummary nation={countryB} data={data} />
+      {selectedNations.map((nation) => (
+        <NationSummary key={nation} nation={nation} data={data} />
+      ))}
     </section>
   )
 }
