@@ -1,0 +1,10 @@
+[
+  { "nation": "Nation A", "year": 2022, "crop_yield_index": 100 },
+  { "nation": "Nation A", "year": 2023, "crop_yield_index": 61 },
+  { "nation": "Nation A", "year": 2024, "crop_yield_index": 88 },
+  { "nation": "Nation A", "year": 2025, "crop_yield_index": 97 },
+  { "nation": "Nation B", "year": 2022, "crop_yield_index": 100 },
+  { "nation": "Nation B", "year": 2023, "crop_yield_index": 54 },
+  { "nation": "Nation B", "year": 2024, "crop_yield_index": 58 },
+  { "nation": "Nation B", "year": 2025, "crop_yield_index": 67 }
+]
