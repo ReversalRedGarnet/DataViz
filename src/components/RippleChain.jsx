@@ -98,6 +98,21 @@ function MetricChart({ title, allRows, nations, valueField }) {
         .attr('stroke', color(nation))
         .attr('stroke-width', 2)
         .attr('d', line)
+
+      // Small hoverable point per data value -- native <title> gives a
+      // tooltip with the exact number on hover/focus, and is read by
+      // screen readers too.
+      svg
+        .selectAll(`circle.point-${nation.replace(/\s+/g, '')}`)
+        .data(series)
+        .join('circle')
+        .attr('cx', (d) => x(d.year))
+        .attr('cy', (d) => y(d[valueField]))
+        .attr('r', 3)
+        .attr('fill', color(nation))
+        .style('cursor', 'default')
+        .append('title')
+        .text((d) => `${nation}, ${d.year}: ${d[valueField]}`)
     }
   }, [allRows, nations, valueField])
 
@@ -105,6 +120,27 @@ function MetricChart({ title, allRows, nations, valueField }) {
     <div>
       <h3 className="text-sm font-medium mb-1">{title}</h3>
       <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
+      {/* Screen-reader-only data table -- the chart above conveys shape
+          and trend visually, this gives the same numbers as text. */}
+      <table className="sr-only">
+        <caption>{title} by year and country</caption>
+        <thead>
+          <tr>
+            <th scope="col">Country</th>
+            <th scope="col">Year</th>
+            <th scope="col">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allRows.map((d) => (
+            <tr key={`${d.nation}-${d.year}`}>
+              <td>{d.nation}</td>
+              <td>{d.year}</td>
+              <td>{d[valueField]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

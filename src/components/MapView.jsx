@@ -142,6 +142,9 @@ export default function MapView({ selected, onToggle, onClear }) {
           }
         })
 
+      // Native tooltip on hover/focus, also read aloud by screen readers.
+      marker.append('title').text((d) => d.name)
+
       // Larger invisible circle purely so touch/mouse users get a
       // comfortable tap target -- doesn't change the visible dot size.
       // pointer-events is set explicitly so it's clickable despite
@@ -209,17 +212,26 @@ export default function MapView({ selected, onToggle, onClear }) {
     })
   }, [selected])
 
+  // Respect the OS-level "reduce motion" setting (relevant for vestibular
+  // disorders) by skipping the animation rather than forcing it.
+  function transitionDuration() {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    return prefersReduced ? 0 : 200
+  }
+
   function zoomBy(factor) {
     if (!zoomRef.current || !svgRef.current) return
-    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, factor)
+    d3.select(svgRef.current)
+      .transition()
+      .duration(transitionDuration())
+      .call(zoomRef.current.scaleBy, factor)
   }
 
   function resetView() {
     if (!zoomRef.current || !svgRef.current) return
-    d3
-      .select(svgRef.current)
+    d3.select(svgRef.current)
       .transition()
-      .duration(200)
+      .duration(transitionDuration())
       .call(zoomRef.current.transform, d3.zoomIdentity)
   }
 
