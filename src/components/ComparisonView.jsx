@@ -1,4 +1,6 @@
 import { METRICS } from '../utils/metrics.js'
+import { SELECTION_COLORS } from '../utils/theme.js'
+import Section from './Section.jsx'
 
 // Side-by-side view of the currently selected nations across each stage
 // of the ripple chain, comparing the event year against the latest year
@@ -7,39 +9,42 @@ import { METRICS } from '../utils/metrics.js'
 //
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
-//   selectedNations -- array of nation names selected in MapView
+//   selectedNations -- ordered array of nation names selected in MapView
 const EVENT_YEAR = 2023
 
 export default function ComparisonView({ data, selectedNations }) {
   if (!data) {
     return (
-      <section className="px-6 py-12">
+      <Section tone="sun">
         <p className="text-sm opacity-60">Comparison -- waiting on data.</p>
-      </section>
+      </Section>
     )
   }
 
   if (!selectedNations || selectedNations.length < 2) {
     return (
-      <section className="px-6 py-12">
+      <Section tone="sun">
         <p className="text-sm opacity-60">Select a second country on the map to compare.</p>
-      </section>
+      </Section>
     )
   }
 
   return (
-    <section className="px-6 py-12 grid md:grid-cols-2 gap-8">
-      {selectedNations.map((nation) => (
-        <NationSummary key={nation} nation={nation} data={data} />
-      ))}
-    </section>
+    <Section tone="sun">
+      <h2 className="text-xl font-semibold mb-4">Compare recovery</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {selectedNations.map((nation, i) => (
+          <NationSummary key={nation} nation={nation} data={data} color={SELECTION_COLORS[i]} />
+        ))}
+      </div>
+    </Section>
   )
 }
 
-function NationSummary({ nation, data }) {
+function NationSummary({ nation, data, color }) {
   return (
-    <div>
-      <h2 className="font-semibold text-lg mb-3">{nation}</h2>
+    <div className="bg-white/70 rounded-lg p-4 border-l-4" style={{ borderColor: color }}>
+      <h3 className="font-semibold text-lg mb-3">{nation}</h3>
       <ul className="space-y-2 text-sm">
         {METRICS.map((m) => {
           const rows = (data[m.key] ?? [])

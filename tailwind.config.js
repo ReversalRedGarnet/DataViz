@@ -7,10 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        // PLACEHOLDER — intentionally empty until the design touch-up pass.
-        // Derive real tokens from the locked hazard + country story rather
-        // than defaulting to Tailwind's stock blue-600 or a generic
-        // cream+terracotta / near-black+neon look.
+        // Soft ocean blue + soft sun yellow, per the design brief.
+        ocean: '#5B8FA3',
+        'ocean-light': '#DCEEF2',
+        sun: '#F0C868',
+        'sun-light': '#FBF1DC',
+        ink: '#24333A',
+        sand: '#FAF7F0',
       },
     },
   },

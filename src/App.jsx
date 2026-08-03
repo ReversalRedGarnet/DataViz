@@ -4,13 +4,14 @@ import MapView from './components/MapView.jsx'
 import RippleChain from './components/RippleChain.jsx'
 import ComparisonView from './components/ComparisonView.jsx'
 import CitationPanel from './components/CitationPanel.jsx'
+import PacificBorder from './components/PacificBorder.jsx'
 import { loadDataset } from './utils/loadData.js'
 import { METRICS } from './utils/metrics.js'
+import { useSelection } from './hooks/useSelection.js'
 
 export default function App() {
   const [data, setData] = useState(null)
-  // Up to two nation names, set by clicking markers in MapView.
-  const [selected, setSelected] = useState([])
+  const { selected, toggle, clear } = useSelection()
 
   useEffect(() => {
     Promise.all(METRICS.map((m) => loadDataset(m.file)))
@@ -24,20 +25,14 @@ export default function App() {
       .catch((err) => console.error('Failed to load datasets:', err))
   }, [])
 
-  function toggleSelection(name) {
-    setSelected((prev) => {
-      if (prev.includes(name)) return prev.filter((n) => n !== name)
-      if (prev.length >= 2) return [prev[1], name] // drop the oldest, keep the newest pair
-      return [...prev, name]
-    })
-  }
-
   return (
     <main className="min-h-screen">
+      <PacificBorder />
       <Hero />
-      <MapView selected={selected} onToggle={toggleSelection} />
+      <MapView selected={selected} onToggle={toggle} onClear={clear} />
       <RippleChain data={data} selectedNations={selected} />
       <ComparisonView data={data} selectedNations={selected} />
+      <PacificBorder />
       <CitationPanel sources={[]} />
     </main>
   )
