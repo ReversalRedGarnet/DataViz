@@ -27,9 +27,7 @@ export const NATIONS = [
   { name: 'Fiji', lat: -18.14, lon: 178.44 },
   { name: 'Solomon Islands', lat: -9.43, lon: 159.95 },
   { name: 'Vanuatu', lat: -17.73, lon: 168.32 },
-  { name: 'Samoa', lat: -13.83, lon: -171.76 },
   { name: 'Tonga', lat: -21.14, lon: -175.2 },
-  { name: 'Kiribati', lat: 1.35, lon: 173.02 },
 ]
 
 const WIDTH = 700
