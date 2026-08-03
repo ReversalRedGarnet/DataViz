@@ -3,19 +3,27 @@ import Hero from './components/Hero.jsx'
 import RippleChain from './components/RippleChain.jsx'
 import ComparisonView from './components/ComparisonView.jsx'
 import CitationPanel from './components/CitationPanel.jsx'
+import { loadDataset } from './utils/loadData.js'
+import { METRICS } from './utils/metrics.js'
 
-// TODO: set once the hazard + two countries are locked
-// (see README.md → "Scope (locked)")
-const COUNTRY_A = null
-const COUNTRY_B = null
+// DUMMY PLACEHOLDER -- replace once the hazard + two countries are locked
+// (see README.md -> "Scope (locked)")
+const COUNTRY_A = 'Nation A'
+const COUNTRY_B = 'Nation B'
 
 export default function App() {
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    // TODO: load the cleaned datasets via src/utils/loadData.js once
-    // data-pipeline/clean_data.py has produced them, e.g.
-    //   loadDataset('disaster_affected_persons.json').then(setData)
+    Promise.all(METRICS.map((m) => loadDataset(m.file)))
+      .then((results) => {
+        const combined = {}
+        METRICS.forEach((m, i) => {
+          combined[m.key] = results[i]
+        })
+        setData(combined)
+      })
+      .catch((err) => console.error('Failed to load datasets:', err))
   }, [])
 
   return (
