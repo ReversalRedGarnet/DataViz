@@ -3,17 +3,26 @@ import * as d3 from 'd3'
 import { METRICS } from '../utils/metrics.js'
 
 // The connected sequence view: one small chart per stage of the chain,
-// each comparing the two nations. Chart implementation: D3 only -- no
-// Plotly / Observable Plot, per the locked stack in README.md.
+// filtered down to whichever nation(s) are selected on the map. Chart
+// implementation: D3 only -- no Plotly / Observable Plot, per the
+// locked stack in README.md.
 //
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
-//   Currently backed by DUMMY placeholder data -- see public/data/*.json
-export default function RippleChain({ data }) {
+//   selectedNations -- array of nation names selected in MapView
+export default function RippleChain({ data, selectedNations }) {
   if (!data) {
     return (
       <section className="px-6 py-12">
         <p className="text-sm opacity-60">Ripple chain -- waiting on data.</p>
+      </section>
+    )
+  }
+
+  if (!selectedNations || selectedNations.length === 0) {
+    return (
+      <section className="px-6 py-12">
+        <p className="text-sm opacity-60">Click a country on the map above to see its ripple chain.</p>
       </section>
     )
   }
@@ -23,7 +32,12 @@ export default function RippleChain({ data }) {
       <h2 className="text-xl font-semibold mb-4">The ripple chain</h2>
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
         {METRICS.map((m) => (
-          <MetricChart key={m.key} title={m.label} data={data[m.key]} valueField={m.field} />
+          <MetricChart
+            key={m.key}
+            title={m.label}
+            data={data[m.key].filter((d) => selectedNations.includes(d.nation))}
+            valueField={m.field}
+          />
         ))}
       </div>
     </section>
