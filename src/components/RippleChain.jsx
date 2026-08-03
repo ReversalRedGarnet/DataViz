@@ -1,74 +1,85 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { METRICS } from '../utils/metrics.js'
+import { SELECTION_COLORS } from '../utils/theme.js'
+import Section from './Section.jsx'
+import SelectionLegend from './SelectionLegend.jsx'
 
 // The connected sequence view: one small chart per stage of the chain,
-// filtered down to whichever nation(s) are selected on the map. Chart
+// filtered to whichever nation(s) are selected on the map. Chart
 // implementation: D3 only -- no Plotly / Observable Plot, per the
 // locked stack in README.md.
 //
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
-//   selectedNations -- array of nation names selected in MapView
+//   selectedNations -- ordered array of nation names selected in
+//     MapView. Order matters here: it drives which colour each nation
+//     gets, kept in sync with the map's numbered badges.
 export default function RippleChain({ data, selectedNations }) {
   if (!data) {
     return (
-      <section className="px-6 py-12">
+      <Section>
         <p className="text-sm opacity-60">Ripple chain -- waiting on data.</p>
-      </section>
+      </Section>
     )
   }
 
   if (!selectedNations || selectedNations.length === 0) {
     return (
-      <section className="px-6 py-12">
-        <p className="text-sm opacity-60">Click a country on the map above to see its ripple chain.</p>
-      </section>
+      <Section>
+        <p className="text-sm opacity-60">
+          Click a country on the map above to see its ripple chain.
+        </p>
+      </Section>
     )
   }
 
   return (
-    <section className="px-6 py-12">
-      <h2 className="text-xl font-semibold mb-4">The ripple chain</h2>
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+    <Section>
+      <h2 className="text-xl font-semibold mb-2">The ripple chain</h2>
+      <SelectionLegend selected={selectedNations} />
+      <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
         {METRICS.map((m) => (
           <MetricChart
             key={m.key}
             title={m.label}
-            data={data[m.key].filter((d) => selectedNations.includes(d.nation))}
+            allRows={data[m.key].filter((d) => selectedNations.includes(d.nation))}
+            nations={selectedNations}
             valueField={m.field}
           />
         ))}
       </div>
-    </section>
+    </Section>
   )
 }
 
-function MetricChart({ title, data, valueField }) {
+function MetricChart({ title, allRows, nations, valueField }) {
   const ref = useRef(null)
 
   useEffect(() => {
-    if (!data || data.length === 0 || !ref.current) return
+    if (!allRows || allRows.length === 0 || !ref.current) return
 
-    const width = 260
-    const height = 160
-    const margin = { top: 8, right: 12, bottom: 20, left: 40 }
+    const width = 280
+    const height = 170
+    const margin = { top: 8, right: 12, bottom: 20, left: 44 }
 
     const svg = d3.select(ref.current)
     svg.selectAll('*').remove()
     svg.attr('viewBox', `0 0 ${width} ${height}`)
 
-    const nations = Array.from(new Set(data.map((d) => d.nation)))
-    const color = d3.scaleOrdinal(nations, ['#2563eb', '#dc2626'])
+    // Colour is assigned by SELECTION ORDER (nations[0], nations[1]),
+    // not by data-encounter order, so it always matches the map's 1 / 2
+    // badges regardless of which JSON row happens to come first.
+    const color = d3.scaleOrdinal(nations, SELECTION_COLORS)
 
     const x = d3
       .scaleLinear()
-      .domain(d3.extent(data, (d) => d.year))
+      .domain(d3.extent(allRows, (d) => d.year))
       .range([margin.left, width - margin.right])
 
     const y = d3
       .scaleLinear()
-      .domain([0, d3.max(data, (d) => d[valueField]) * 1.1])
+      .domain([0, d3.max(allRows, (d) => d[valueField]) * 1.1])
       .nice()
       .range([height - margin.bottom, margin.top])
 
@@ -90,7 +101,8 @@ function MetricChart({ title, data, valueField }) {
       .y((d) => y(d[valueField]))
 
     for (const nation of nations) {
-      const series = data.filter((d) => d.nation === nation).sort((a, b) => a.year - b.year)
+      const series = allRows.filter((d) => d.nation === nation).sort((a, b) => a.year - b.year)
+      if (series.length === 0) continue
 
       svg
         .append('path')
@@ -100,12 +112,12 @@ function MetricChart({ title, data, valueField }) {
         .attr('stroke-width', 2)
         .attr('d', line)
     }
-  }, [data, valueField])
+  }, [allRows, nations, valueField])
 
   return (
     <div>
       <h3 className="text-sm font-medium mb-1">{title}</h3>
-      <svg ref={ref} className="w-full h-auto" />
+      <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
     </div>
   )
 }
