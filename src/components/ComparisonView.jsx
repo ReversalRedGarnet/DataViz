@@ -11,7 +11,7 @@ import EmptyState from './EmptyState.jsx'
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
 //   selectedNations -- ordered array of nation names selected in MapView
-const EVENT_YEAR = 2023
+const EVENT_YEAR = 2020 // Cyclone Harold, April 2020
 
 export default function ComparisonView({ data, selectedNations }) {
   if (!data) return <EmptyState tone="sun">Comparison -- waiting on data.</EmptyState>
