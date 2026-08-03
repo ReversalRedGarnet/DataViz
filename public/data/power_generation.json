@@ -1,0 +1,10 @@
+[
+  { "nation": "Nation A", "year": 2022, "power_generation_index": 100 },
+  { "nation": "Nation A", "year": 2023, "power_generation_index": 58 },
+  { "nation": "Nation A", "year": 2024, "power_generation_index": 91 },
+  { "nation": "Nation A", "year": 2025, "power_generation_index": 100 },
+  { "nation": "Nation B", "year": 2022, "power_generation_index": 100 },
+  { "nation": "Nation B", "year": 2023, "power_generation_index": 51 },
+  { "nation": "Nation B", "year": 2024, "power_generation_index": 63 },
+  { "nation": "Nation B", "year": 2025, "power_generation_index": 74 }
+]
