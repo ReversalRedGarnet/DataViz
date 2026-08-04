@@ -7,7 +7,10 @@ Usage:
     1. Export each dataset below as CSV from https://stats.pacificdata.org/
        (direct links in README.md -> "Data Sources") into
        data-pipeline/raw/, renamed exactly as the keys in DATASETS below
-       (e.g. disaster_affected_persons.csv).
+       (e.g. disaster_affected_persons.csv). Download the UNFILTERED
+       table (all countries, all years) -- this script does the country
+       and year filtering, so there's no need to fiddle with the site's
+       filter UI first.
     2. Run:  python clean_data.py
     3. Cleaned JSON lands in ../public/data/, ready for the frontend to
        fetch via src/utils/loadData.js
@@ -30,6 +33,12 @@ OUT_DIR = Path(__file__).parent.parent / "public" / "data"
 
 # Locked scope -- see README.md -> "Scope (locked)"
 NATIONS = ["Solomon Islands", "Vanuatu", "Fiji", "Tonga"]
+
+# A few years of baseline before Cyclone Harold (April 2020) and a few of
+# recovery after. Widen this later by just changing these two numbers and
+# rerunning -- no need to re-export from the site.
+YEAR_MIN = 2016
+YEAR_MAX = 2024
 
 # Alternate codes some PDH exports use instead of full country names --
 # extend a list here if a particular dataset uses a different scheme.
@@ -84,8 +93,9 @@ def clean_one(csv_name: str, json_name: str, field_name: str) -> None:
     for nation in NATIONS:
         mask = df[country_col].apply(lambda v: _matches_nation(v, nation))
         matched = df[mask]
-        print(f"  {nation}: {len(matched)} rows matched")
-        for _, r in matched.iterrows():
+        in_range = matched[matched[time_col].astype(int).between(YEAR_MIN, YEAR_MAX)]
+        print(f"  {nation}: {len(matched)} rows matched, {len(in_range)} within {YEAR_MIN}-{YEAR_MAX}")
+        for _, r in in_range.iterrows():
             rows.append(
                 {
                     "nation": nation,
