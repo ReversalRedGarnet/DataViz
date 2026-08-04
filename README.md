@@ -17,7 +17,7 @@ Submissions close **August 31, 2026**.
 
 > How do existing inequalities determine who suffers most from climate change?
 
-Rather than asking *which country is worst*, Ripple asks *why do two places hit by the same hazard end up in such different places a year later?*
+Rather than asking *which country is worst*, Ripple asks *why do places hit by the same hazard end up in such different places a year later?*
 
 ---
 
@@ -25,10 +25,10 @@ Rather than asking *which country is worst*, Ripple asks *why do two places hit 
 
 To ship a finished, polished piece solo in ~4 weeks, this project is intentionally narrow:
 
-- **One hazard type** (e.g. a specific cyclone event), not a general hazard catalogue.
-- **Two countries/territories**, chosen because they were hit by the same hazard type but had visibly different recovery outcomes — not an open-ended country explorer.
-- **One real ripple chain**, built from actual linked official data (disaster → economic loss → crop/livestock yield → tourism decline), not an illustrative diagram.
-- **One comparison view** placing both countries side by side through that same chain, so the "why do outcomes differ" question is visible without extra explanatory text.
+- **One hazard event** — Cyclone Harold, April 2020 — not a general hazard catalogue.
+- **Four countries/territories** (Vanuatu, Fiji, Tonga, Solomon Islands), all struck by the same cyclone within the same week but left in visibly different places a year later — not an open-ended country explorer.
+- **One real ripple chain**, built from actual linked official data (disaster → economic loss → crop yield → power generation → tourist arrivals), not an illustrative diagram.
+- **One comparison view** letting any two of the four be placed side by side through that same chain, so the "why do outcomes differ" question is visible without extra explanatory text.
 
 Anything beyond this (time sliders, story/exploration mode toggle, downloadable reports, full vulnerability-dimension dashboard) is a **v2 idea**, not part of this submission.
 
@@ -46,15 +46,15 @@ Anything beyond this (time sliders, story/exploration mode toggle, downloadable 
 
 ## Data Sources
 
-At least one dataset is drawn from the official 2026 list on the Pacific Data Hub's .Stat Explorer. Planned datasets:
+All five datasets are drawn from the official 2026 list on the Pacific Data Hub's .Stat Explorer, covering Vanuatu, Fiji, Tonga, and Solomon Islands:
 
 - Number of directly affected persons attributed to disasters
-- Direct disaster economic loss
-- Crop yield / livestock yield
-- Tourist arrivals
+- Direct disaster economic loss (thin coverage — only Fiji has a real 2020 figure in the official data)
+- Crop yield
+- Tourist arrivals (no data for Solomon Islands; 2020 is confounded by COVID)
 - Power generation
 
-All sources are exported manually as CSV from [stats.pacificdata.org](https://stats.pacificdata.org/) and listed in full in the competition submission form and in-app citation panel, per the competition rules.
+All sources were exported manually as CSV from [stats.pacificdata.org](https://stats.pacificdata.org/), cleaned by `data-pipeline/clean_data.py`, and are listed in full in the in-app citation panel. The same list should go in the competition submission form per the competition rules.
 
 ---
 
@@ -66,13 +66,13 @@ All sources are exported manually as CSV from [stats.pacificdata.org](https://st
 - HTML/CSS — written through JSX + Tailwind, not hand-authored separately
 
 **Data pipeline**
-- Pandas — clean official CSV exports into 2–3 small static JSON files scoped to the two chosen countries and one event window
-- *(GeoPandas skipped — no raw shapefile processing needed; a pre-made GeoJSON is used instead if a map is included)*
+- Pandas — clean official CSV exports into 5 small static JSON files (one per metric), scoped to the four chosen countries and one event window
+- *(GeoPandas skipped — no raw shapefile processing needed; the map uses a pre-made TopoJSON, `public/land-50m.json`)*
 
 **Frontend**
 - React (via Vite) — app shell and state
-- D3.js — all charts and the ripple-chain visualization *(Plotly and Observable Plot deliberately excluded to avoid running three charting paradigms in parallel)*
-- Leaflet — included only if a literal map view earns its place in the comparison; otherwise omitted
+- D3.js — all charts, the ripple-chain visualization, and the map *(Plotly and Observable Plot deliberately excluded to avoid running three charting paradigms in parallel)*
+- topojson-client — decodes the pre-made TopoJSON for the map; no separate mapping library needed since D3 renders it directly
 - Tailwind CSS — all styling
 
 **Platforms/tools**
@@ -87,10 +87,10 @@ All sources are exported manually as CSV from [stats.pacificdata.org](https://st
 
 | Phase | Focus | Est. time |
 |---|---|---|
-| 1 | Lock the hazard + two-country story, pull real numbers | 2–3 days |
+| 1 | Lock the hazard + country set, pull real numbers | 2–3 days |
 | 2 | Build the Pandas data pipeline into clean static JSON | 2–3 days |
 | 3 | Scaffold React + build core D3 ripple-chain charts | 4–5 days |
-| 4 | Build the two-country comparison view | 3–4 days |
+| 4 | Build the comparison view | 3–4 days |
 | 5 | Polish: transitions, citations panel, accessibility, mobile pass | 4–5 days |
 | 6 | Write framing text, test, submit with buffer before Aug 31 | 3–4 days |
 
@@ -98,7 +98,7 @@ All sources are exported manually as CSV from [stats.pacificdata.org](https://st
 
 ## Rules Compliance Checklist
 
-- [ ] Uses at least one dataset from the official 2026 list
+- [x] Uses at least one dataset from the official 2026 list
 - [ ] All additional data sources are open data and listed in the submission form
 - [ ] Final dataviz is made public (deployed + link submitted)
 - [ ] Submitted before August 31, 2026
@@ -107,7 +107,7 @@ All sources are exported manually as CSV from [stats.pacificdata.org](https://st
 
 ## Current Status
 
-Planning → Locking hazard/country pair and pulling official data.
+Built, and through two rounds of UI/UX polish — tooltips, motion, per-metric chart types, the "Big Picture" section, comparative insights, and two-tone section dividers. Left before submission: rewriting the Hero framing copy to name Cyclone Harold directly, a fresh accessibility/mobile pass, and deploying to a public host — none of which are done yet.
 
 ---
 
