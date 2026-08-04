@@ -1,26 +1,37 @@
 [
-  { "nation": "Fiji", "year": 2022, "economic_loss_usd_million": 5 },
-  { "nation": "Fiji", "year": 2023, "economic_loss_usd_million": 140 },
-  { "nation": "Fiji", "year": 2024, "economic_loss_usd_million": 25 },
-  { "nation": "Fiji", "year": 2025, "economic_loss_usd_million": 6 },
-  { "nation": "Solomon Islands", "year": 2022, "economic_loss_usd_million": 3 },
-  { "nation": "Solomon Islands", "year": 2023, "economic_loss_usd_million": 80 },
-  { "nation": "Solomon Islands", "year": 2024, "economic_loss_usd_million": 55 },
-  { "nation": "Solomon Islands", "year": 2025, "economic_loss_usd_million": 28 },
-  { "nation": "Vanuatu", "year": 2022, "economic_loss_usd_million": 4 },
-  { "nation": "Vanuatu", "year": 2023, "economic_loss_usd_million": 160 },
-  { "nation": "Vanuatu", "year": 2024, "economic_loss_usd_million": 110 },
-  { "nation": "Vanuatu", "year": 2025, "economic_loss_usd_million": 70 },
-  { "nation": "Samoa", "year": 2022, "economic_loss_usd_million": 2 },
-  { "nation": "Samoa", "year": 2023, "economic_loss_usd_million": 60 },
-  { "nation": "Samoa", "year": 2024, "economic_loss_usd_million": 10 },
-  { "nation": "Samoa", "year": 2025, "economic_loss_usd_million": 3 },
-  { "nation": "Tonga", "year": 2022, "economic_loss_usd_million": 2 },
-  { "nation": "Tonga", "year": 2023, "economic_loss_usd_million": 95 },
-  { "nation": "Tonga", "year": 2024, "economic_loss_usd_million": 58 },
-  { "nation": "Tonga", "year": 2025, "economic_loss_usd_million": 30 },
-  { "nation": "Kiribati", "year": 2022, "economic_loss_usd_million": 1 },
-  { "nation": "Kiribati", "year": 2023, "economic_loss_usd_million": 20 },
-  { "nation": "Kiribati", "year": 2024, "economic_loss_usd_million": 17 },
-  { "nation": "Kiribati", "year": 2025, "economic_loss_usd_million": 15 }
+  {
+    "nation": "Vanuatu",
+    "year": 2018,
+    "economic_loss_usd": 64500000.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2016,
+    "economic_loss_usd": 374109863.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2018,
+    "economic_loss_usd": 50247780.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2019,
+    "economic_loss_usd": 1090125.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2020,
+    "economic_loss_usd": 24247724.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2016,
+    "economic_loss_usd": 3050475.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2018,
+    "economic_loss_usd": 8579025.0
+  }
 ]

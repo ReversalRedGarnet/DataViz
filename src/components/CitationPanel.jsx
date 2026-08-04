@@ -31,13 +31,19 @@ export default function CitationPanel({ sources = [] }) {
 
         <div>
           <h2 className="font-semibold mb-2">About this data</h2>
-          {/* TODO: remove this paragraph once real data replaces the
-              placeholder numbers -- see README.md "Scope (locked)" and
-              data-pipeline/clean_data.py. Leaving fabricated-looking
-              numbers unlabeled on a public page would be misleading. */}
           <p className="opacity-70">
-            This is a work-in-progress entry for the 2026 Pacific DataViz Challenge. Some figures
-            shown are placeholder data used for development and do not represent real events.
+            Figures are drawn from official Pacific Data Hub statistics for Solomon Islands,
+            Vanuatu, Fiji, and Tonga. Data coverage varies by country and metric — direct
+            disaster economic loss in particular is patchy for Solomon Islands and Vanuatu in
+            the official dataset, and is labelled as unavailable where that's the case rather
+            than left blank without explanation.
+          </p>
+          <p className="opacity-70 mt-3">
+            Even the data about these disasters is unevenly distributed — some nations have the
+            infrastructure to measure and report losses in detail, others don't. As disasters
+            grow more frequent, that gap will matter almost as much as the disasters themselves.
+          </p>
+          <p className="opacity-70 mt-3">
             This site is illustrative and isn't intended to inform policy, funding, or financial
             decisions.
           </p>

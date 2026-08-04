@@ -42,14 +42,17 @@ function NationSummary({ nation, data, color }) {
             .sort((a, b) => a.year - b.year)
           const eventRow = rows.find((r) => r.year === EVENT_YEAR)
           const latestRow = rows[rows.length - 1]
-          if (!eventRow || !latestRow) return null
 
           return (
             <li key={m.key} className="flex justify-between gap-4">
               <span className="opacity-70">{m.label}</span>
-              <span>
-                {eventRow[m.field]} → {latestRow[m.field]}
-              </span>
+              {eventRow && latestRow ? (
+                <span>
+                  {eventRow[m.field]} → {latestRow[m.field]}
+                </span>
+              ) : (
+                <span className="opacity-50 italic text-xs">No data available</span>
+              )}
             </li>
           )
         })}

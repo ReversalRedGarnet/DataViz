@@ -1,26 +1,122 @@
 [
-  { "nation": "Fiji", "year": 2022, "affected_persons": 800 },
-  { "nation": "Fiji", "year": 2023, "affected_persons": 45000 },
-  { "nation": "Fiji", "year": 2024, "affected_persons": 4000 },
-  { "nation": "Fiji", "year": 2025, "affected_persons": 600 },
-  { "nation": "Solomon Islands", "year": 2022, "affected_persons": 500 },
-  { "nation": "Solomon Islands", "year": 2023, "affected_persons": 30000 },
-  { "nation": "Solomon Islands", "year": 2024, "affected_persons": 18000 },
-  { "nation": "Solomon Islands", "year": 2025, "affected_persons": 7000 },
-  { "nation": "Vanuatu", "year": 2022, "affected_persons": 400 },
-  { "nation": "Vanuatu", "year": 2023, "affected_persons": 52000 },
-  { "nation": "Vanuatu", "year": 2024, "affected_persons": 35000 },
-  { "nation": "Vanuatu", "year": 2025, "affected_persons": 20000 },
-  { "nation": "Samoa", "year": 2022, "affected_persons": 300 },
-  { "nation": "Samoa", "year": 2023, "affected_persons": 15000 },
-  { "nation": "Samoa", "year": 2024, "affected_persons": 2000 },
-  { "nation": "Samoa", "year": 2025, "affected_persons": 400 },
-  { "nation": "Tonga", "year": 2022, "affected_persons": 200 },
-  { "nation": "Tonga", "year": 2023, "affected_persons": 22000 },
-  { "nation": "Tonga", "year": 2024, "affected_persons": 12000 },
-  { "nation": "Tonga", "year": 2025, "affected_persons": 6000 },
-  { "nation": "Kiribati", "year": 2022, "affected_persons": 150 },
-  { "nation": "Kiribati", "year": 2023, "affected_persons": 9000 },
-  { "nation": "Kiribati", "year": 2024, "affected_persons": 7500 },
-  { "nation": "Kiribati", "year": 2025, "affected_persons": 6800 }
+  {
+    "nation": "Solomon Islands",
+    "year": 2016,
+    "affected_persons": 60858.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2017,
+    "affected_persons": 51465.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2018,
+    "affected_persons": 194155.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2019,
+    "affected_persons": 1834.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2020,
+    "affected_persons": 2339.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2021,
+    "affected_persons": 240.0
+  },
+  {
+    "nation": "Solomon Islands",
+    "year": 2022,
+    "affected_persons": 20080.0
+  },
+  {
+    "nation": "Vanuatu",
+    "year": 2017,
+    "affected_persons": 920.0
+  },
+  {
+    "nation": "Vanuatu",
+    "year": 2018,
+    "affected_persons": 23286.0
+  },
+  {
+    "nation": "Vanuatu",
+    "year": 2019,
+    "affected_persons": 18.0
+  },
+  {
+    "nation": "Vanuatu",
+    "year": 2020,
+    "affected_persons": 246802.0
+  },
+  {
+    "nation": "Vanuatu",
+    "year": 2021,
+    "affected_persons": 1400.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2016,
+    "affected_persons": 633584.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2017,
+    "affected_persons": 0.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2018,
+    "affected_persons": 155726.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2019,
+    "affected_persons": 78045.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2020,
+    "affected_persons": 235921.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2021,
+    "affected_persons": 78030.0
+  },
+  {
+    "nation": "Fiji",
+    "year": 2022,
+    "affected_persons": 1787.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2016,
+    "affected_persons": 0.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2017,
+    "affected_persons": 0.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2018,
+    "affected_persons": 84311.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2019,
+    "affected_persons": 640.0
+  },
+  {
+    "nation": "Tonga",
+    "year": 2020,
+    "affected_persons": 68.0
+  }
 ]

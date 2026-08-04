@@ -7,6 +7,29 @@ import PacificBorder from './components/PacificBorder.jsx'
 import { useSelection } from './hooks/useSelection.js'
 import { useRippleData } from './hooks/useRippleData.js'
 
+const DATA_SOURCES = [
+  {
+    label: 'Number of directly affected persons attributed to disasters — Pacific Data Hub (SPC)',
+    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AFFCT.........&pd=,&to[TIME_PERIOD]=false&lb=bt',
+  },
+  {
+    label: 'Direct disaster economic loss — Pacific Data Hub (SPC)',
+    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AALT...._T.....&pd=,&to[TIME_PERIOD]=false',
+  },
+  {
+    label: 'Crop yield — Pacific Data Hub (SPC)',
+    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.CROP_YIELD.&pd=,&to[TIME_PERIOD]=false',
+  },
+  {
+    label: 'Tourist arrivals — Pacific Data Hub (SPC)',
+    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.TRSM_ARR.&pd=,&to[TIME_PERIOD]=false',
+  },
+  {
+    label: 'Power generation — Pacific Data Hub (SPC)',
+    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.POWER_GEN.&pd=,&to[TIME_PERIOD]=false',
+  },
+]
+
 function selectionAnnouncement(selected) {
   if (selected.length === 0) return ''
   if (selected.length === 1) return `${selected[0]} selected. Showing its ripple chain below.`
@@ -40,13 +63,7 @@ export default function App() {
         <RippleChain data={data} selectedNations={selected} />
         <ComparisonView data={data} selectedNations={selected} />
         <PacificBorder />
-        const DATA_SOURCES = [
-  { label: 'Number of directly affected persons attributed to disasters — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AFFCT.........&pd=,&to[TIME_PERIOD]=false&lb=bt' },
-  { label: 'Direct disaster economic loss — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AALT...._T.....&pd=,&to[TIME_PERIOD]=false' },
-  { label: 'Crop yield — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.CROP_YIELD.&pd=,&to[TIME_PERIOD]=false' },
-  { label: 'Tourist arrivals — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.TRSM_ARR.&pd=,&to[TIME_PERIOD]=false' },
-  { label: 'Power generation — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.POWER_GEN.&pd=,&to[TIME_PERIOD]=false' },
-]
+        <CitationPanel sources={DATA_SOURCES} />
       </main>
     </>
   )
