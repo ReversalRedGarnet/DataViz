@@ -13,16 +13,9 @@ import { resetSvg } from '../utils/d3helpers.js'
 // missing), fetched once at runtime rather than bundled into the JS so
 // it doesn't bloat the main bundle or block the initial page render.
 //
-// DUMMY PLACEHOLDER nation set -- swap for your locked pair(s) later
-// (see README.md -> "Scope (locked)"). Coordinates are approximate
+// Locked nation set -- the four countries Cyclone Harold hit in April
+// 2020, see README.md -> "Scope (locked)". Coordinates are approximate
 // (capital city), fine for an illustrative map, not for navigation.
-//
-// Note: Kiribati's Tarawa atoll is small enough that it's simplified
-// away entirely at this basemap's resolution -- its marker and label
-// still render normally, it just won't have visible land underneath.
-// Using a higher-resolution basemap would fix that at the cost of a
-// much larger download (10m resolution is ~6x the file size), which
-// isn't worth it for one atoll's outline.
 export const NATIONS = [
   { name: 'Fiji', lat: -18.14, lon: 178.44 },
   { name: 'Solomon Islands', lat: -9.43, lon: 159.95 },
@@ -71,13 +64,16 @@ export default function MapView({ selected, onToggle, onClear }) {
           geometry: { type: 'Point', coordinates: [n.lon, n.lat] },
         })),
       }
-      // Fitted to our 6 markers, not the whole world, so the initial
+      // Fitted to our 4 markers, not the whole world, so the initial
       // view stays zoomed into the Pacific rather than zoomed out to
-      // fit every continent.
+      // fit every continent. Padding is generous (65px, not the more
+      // typical ~40) so labels and the zoom-control buttons in the
+      // corner have breathing room and don't crowd markers near the
+      // edge (Tonga sits closest to that corner).
       projection.fitExtent(
         [
-          [40, 40],
-          [WIDTH - 40, HEIGHT - 40],
+          [65, 65],
+          [WIDTH - 65, HEIGHT - 65],
         ],
         points
       )
@@ -87,13 +83,15 @@ export default function MapView({ selected, onToggle, onClear }) {
 
       // Ocean background, then real coastlines drawn through the same
       // projection -- anything outside the viewBox is simply cropped,
-      // same as any regional map.
+      // same as any regional map. A stronger, more saturated blue than
+      // the decorative ocean-light token so the ocean reads clearly at
+      // a glance rather than blending toward white.
       g.append('rect')
         .attr('x', -2000)
         .attr('y', -2000)
         .attr('width', WIDTH + 4000)
         .attr('height', HEIGHT + 4000)
-        .attr('fill', '#DCEEF2')
+        .attr('fill', '#7FBFD9')
 
       const geoPath = d3.geoPath(projection)
       const landFeature = feature(land50m, land50m.objects.land)
@@ -244,14 +242,14 @@ export default function MapView({ selected, onToggle, onClear }) {
         <svg
           ref={svgRef}
           role="img"
-          aria-label="Map of the Pacific with six selectable nations"
-          className="w-full h-auto border rounded-lg"
+          aria-label="Map of the Pacific with four selectable nations"
+          className="w-full h-auto border-2 border-ink/15 rounded-2xl shadow-sm"
         />
-        <div className="absolute bottom-3 right-3 flex flex-col gap-1">
+        <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
           <button
             type="button"
             onClick={() => zoomBy(1.5)}
-            className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center text-lg font-semibold"
+            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-lg font-medium text-ink hover:bg-white/70 transition-colors"
             aria-label="Zoom in"
           >
             +
@@ -259,7 +257,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={() => zoomBy(1 / 1.5)}
-            className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center text-lg font-semibold"
+            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-lg font-medium text-ink hover:bg-white/70 transition-colors"
             aria-label="Zoom out"
           >
             −
@@ -267,7 +265,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={resetView}
-            className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center text-xs font-semibold"
+            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-xs font-medium text-ink hover:bg-white/70 transition-colors"
             aria-label="Reset view"
           >
             ⟲
