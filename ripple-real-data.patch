@@ -1,0 +1,1149 @@
+diff --git a/.gitignore b/.gitignore
+index f8f5116..e324113 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -3,3 +3,8 @@ dist/
+ .DS_Store
+ *.local
+ .env
++
++# Raw .Stat Explorer exports -- regenerate any time via the links in
++# README.md -> "Data Sources". A few MB each and several are byte-
++# identical whole-dataflow dumps, not worth carrying in git history.
++data-pipeline/raw/*.csv
+diff --git a/data-pipeline/clean_data.py b/data-pipeline/clean_data.py
+index e0dd49f..3e47a59 100644
+--- a/data-pipeline/clean_data.py
++++ b/data-pipeline/clean_data.py
+@@ -5,22 +5,21 @@ One-time, offline script. Not run in the browser (see README.md -> stack).
+ 
+ Usage:
+     1. Export each dataset below as CSV from https://stats.pacificdata.org/
+-       (direct links in README.md -> "Data Sources") into
+-       data-pipeline/raw/, renamed exactly as the keys in DATASETS below
+-       (e.g. disaster_affected_persons.csv). Download the UNFILTERED
+-       table (all countries, all years) -- this script does the country
+-       and year filtering, so there's no need to fiddle with the site's
+-       filter UI first.
++       into data-pipeline/raw/, renamed exactly as the keys in DATASETS
++       below. Download the UNFILTERED table -- this script filters by
++       country, year, AND indicator itself.
+     2. Run:  python clean_data.py
+     3. Cleaned JSON lands in ../public/data/, ready for the frontend to
+        fetch via src/utils/loadData.js
+ 
+-NOTE ON RAW COLUMN NAMES: Pacific Data Hub / .Stat Explorer CSV exports
+-commonly use GEO_PICT (or REF_AREA) for country, TIME_PERIOD for year, and
+-OBS_VALUE for the number -- this script assumes those first. Each export
+-can differ slightly, so on first run this prints the columns it actually
+-found in every file; if a KeyError below points you at that printout,
+-add the real header name to the *_COL_CANDIDATES lists.
++IMPORTANT: some raw exports from this portal are whole-dataflow dumps
++containing MANY indicators bundled together -- e.g. crop_yield.csv,
++power_generation.csv and tourist_arrivals.csv are literally the same
++file (the full "Climate Change Indicators" dataflow), and
++disaster_affected_persons.csv / disaster_economic_loss.csv are the same
++"SDG 11" dataflow dump. That's normal for this portal, not a mistake --
++this script filters each one down to the single indicator code it
++actually needs.
+ """
+ 
+ import json
+@@ -34,14 +33,6 @@ OUT_DIR = Path(__file__).parent.parent / "public" / "data"
+ # Locked scope -- see README.md -> "Scope (locked)"
+ NATIONS = ["Solomon Islands", "Vanuatu", "Fiji", "Tonga"]
+ 
+-# A few years of baseline before Cyclone Harold (April 2020) and a few of
+-# recovery after. Widen this later by just changing these two numbers and
+-# rerunning -- no need to re-export from the site.
+-YEAR_MIN = 2016
+-YEAR_MAX = 2024
+-
+-# Alternate codes some PDH exports use instead of full country names --
+-# extend a list here if a particular dataset uses a different scheme.
+ NATION_CODES = {
+     "Solomon Islands": ["SB", "SLB"],
+     "Vanuatu": ["VU", "VUT"],
+@@ -49,14 +40,51 @@ NATION_CODES = {
+     "Tonga": ["TO", "TON"],
+ }
+ 
+-# raw filename in data-pipeline/raw/ -> (output json name, field name).
+-# Field names must match src/utils/metrics.js exactly.
++# A few years of baseline before Cyclone Harold (April 2020) and a few of
++# recovery after. Widen later by just changing these two numbers.
++YEAR_MIN = 2016
++YEAR_MAX = 2024
++
++# raw filename in data-pipeline/raw/ -> config for that file.
++# indicator_col/indicator_code select the ONE indicator this dataset
++# needs out of what may be a shared, multi-indicator dataflow dump.
++# field_name must match src/utils/metrics.js.
+ DATASETS = {
+-    "disaster_affected_persons.csv": ("disaster_affected_persons.json", "affected_persons"),
+-    "disaster_economic_loss.csv": ("disaster_economic_loss.json", "economic_loss_usd_million"),
+-    "crop_yield.csv": ("crop_yield.json", "crop_yield_index"),
+-    "tourist_arrivals.csv": ("tourist_arrivals.json", "tourist_arrivals_index"),
+-    "power_generation.csv": ("power_generation.json", "power_generation_index"),
++    "disaster_affected_persons.csv": {
++        "json_name": "disaster_affected_persons.json",
++        "field_name": "affected_persons",
++        "indicator_col": "INDICATOR",
++        "indicator_code": "VC_DSR_AFFCT",
++    },
++    "disaster_economic_loss.csv": {
++        "json_name": "disaster_economic_loss.json",
++        "field_name": "economic_loss_usd",
++        "indicator_col": "INDICATOR",
++        "indicator_code": "VC_DSR_AALT",
++        # a handful of rows are reported in USD_MILLIONS instead of USD --
++        # excluded rather than guess-converted, since it's only ~4 rows
++        # region-wide and not worth the risk of a silent unit error.
++        "unit_col": "UNIT_MEASURE",
++        "unit_value": "USD",
++    },
++    "crop_yield.csv": {
++        "json_name": "crop_yield.json",
++        "field_name": "crop_yield_index",
++        "indicator_col": "CLIMATE_CHANGE_INDICATORS",
++        "indicator_code": "CROP_YIELD",
++    },
++    "tourist_arrivals.csv": {
++        "json_name": "tourist_arrivals.json",
++        "field_name": "tourist_arrivals_index",
++        "indicator_col": "CLIMATE_CHANGE_INDICATORS",
++        "indicator_code": "TRSM_ARR",
++    },
++    "power_generation.csv": {
++        "json_name": "power_generation.json",
++        "field_name": "power_generation_index",
++        "indicator_col": "CLIMATE_CHANGE_INDICATORS",
++        "indicator_code": "POWER_GEN",
++    },
+ }
+ 
+ COUNTRY_COL_CANDIDATES = ["GEO_PICT", "REF_AREA", "Pacific Island Countries and territories", "Country"]
+@@ -81,10 +109,20 @@ def _matches_nation(raw_value, nation) -> bool:
+     return raw_value.upper() in NATION_CODES.get(nation, [])
+ 
+ 
+-def clean_one(csv_name: str, json_name: str, field_name: str) -> None:
++def clean_one(csv_name: str, config: dict) -> None:
+     df = pd.read_csv(RAW_DIR / csv_name)
+     print(f"\n{csv_name}: columns found -> {list(df.columns)}")
+ 
++    indicator_col, indicator_code = config["indicator_col"], config["indicator_code"]
++    if indicator_col not in df.columns:
++        raise KeyError(f"Expected an '{indicator_col}' column to select {indicator_code} -- not found.")
++    df = df[df[indicator_col] == indicator_code]
++    print(f"  filtered to indicator {indicator_code}: {len(df)} rows")
++
++    if "unit_col" in config:
++        df = df[df[config["unit_col"]] == config["unit_value"]]
++        print(f"  filtered to unit {config['unit_value']}: {len(df)} rows")
++
+     country_col = _find_col(df, COUNTRY_COL_CANDIDATES, "country")
+     time_col = _find_col(df, TIME_COL_CANDIDATES, "year")
+     value_col = _find_col(df, VALUE_COL_CANDIDATES, "value")
+@@ -96,41 +134,34 @@ def clean_one(csv_name: str, json_name: str, field_name: str) -> None:
+         in_range = matched[matched[time_col].astype(int).between(YEAR_MIN, YEAR_MAX)]
+         print(f"  {nation}: {len(matched)} rows matched, {len(in_range)} within {YEAR_MIN}-{YEAR_MAX}")
+         for _, r in in_range.iterrows():
+-            rows.append(
+-                {
+-                    "nation": nation,
+-                    "year": int(r[time_col]),
+-                    field_name: r[value_col],
+-                }
+-            )
++            rows.append({"nation": nation, "year": int(r[time_col]), config["field_name"]: r[value_col]})
+ 
+     OUT_DIR.mkdir(parents=True, exist_ok=True)
+-    with open(OUT_DIR / json_name, "w") as f:
++    with open(OUT_DIR / config["json_name"], "w") as f:
+         json.dump(rows, f, indent=2)
+-    print(f"  wrote {json_name} ({len(rows)} rows total)")
++    print(f"  wrote {config['json_name']} ({len(rows)} rows total)")
+ 
+ 
+ def main() -> None:
+-    any_found = False
+-    problems = []
+-    for csv_name, (json_name, field_name) in DATASETS.items():
++    any_found, problems = False, []
++    for csv_name, config in DATASETS.items():
+         path = RAW_DIR / csv_name
+         if not path.exists():
+-            print(f"Skipping {csv_name} -- not found in {RAW_DIR}. See README.md -> Data Sources.")
++            print(f"Skipping {csv_name} -- not found in {RAW_DIR}.")
+             continue
+         any_found = True
+         try:
+-            clean_one(csv_name, json_name, field_name)
++            clean_one(csv_name, config)
+         except KeyError as e:
+             print(f"  PROBLEM in {csv_name}: {e}")
+             problems.append(csv_name)
+ 
+     if not any_found:
+-        print("\nNo raw CSVs found yet -- export them into data-pipeline/raw/ first.")
++        print("\nNo raw CSVs found yet.")
+     elif problems:
+-        print(f"\n{len(problems)} file(s) need a column-name fix before rerunning: {problems}")
++        print(f"\n{len(problems)} file(s) need attention: {problems}")
+     else:
+-        print("\nAll datasets cleaned with no problems.")
++        print("\nAll datasets cleaned.")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/public/data/crop_yield.json b/public/data/crop_yield.json
+index 4d242d4..5e8f333 100644
+--- a/public/data/crop_yield.json
++++ b/public/data/crop_yield.json
+@@ -1,26 +1,182 @@
+ [
+-  { "nation": "Fiji", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Fiji", "year": 2023, "crop_yield_index": 58 },
+-  { "nation": "Fiji", "year": 2024, "crop_yield_index": 90 },
+-  { "nation": "Fiji", "year": 2025, "crop_yield_index": 98 },
+-  { "nation": "Solomon Islands", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Solomon Islands", "year": 2023, "crop_yield_index": 55 },
+-  { "nation": "Solomon Islands", "year": 2024, "crop_yield_index": 62 },
+-  { "nation": "Solomon Islands", "year": 2025, "crop_yield_index": 70 },
+-  { "nation": "Vanuatu", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Vanuatu", "year": 2023, "crop_yield_index": 45 },
+-  { "nation": "Vanuatu", "year": 2024, "crop_yield_index": 55 },
+-  { "nation": "Vanuatu", "year": 2025, "crop_yield_index": 63 },
+-  { "nation": "Samoa", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Samoa", "year": 2023, "crop_yield_index": 68 },
+-  { "nation": "Samoa", "year": 2024, "crop_yield_index": 94 },
+-  { "nation": "Samoa", "year": 2025, "crop_yield_index": 99 },
+-  { "nation": "Tonga", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Tonga", "year": 2023, "crop_yield_index": 50 },
+-  { "nation": "Tonga", "year": 2024, "crop_yield_index": 60 },
+-  { "nation": "Tonga", "year": 2025, "crop_yield_index": 72 },
+-  { "nation": "Kiribati", "year": 2022, "crop_yield_index": 100 },
+-  { "nation": "Kiribati", "year": 2023, "crop_yield_index": 60 },
+-  { "nation": "Kiribati", "year": 2024, "crop_yield_index": 58 },
+-  { "nation": "Kiribati", "year": 2025, "crop_yield_index": 55 }
+-]
++  {
++    "nation": "Solomon Islands",
++    "year": 2016,
++    "crop_yield_index": 7278.5
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2017,
++    "crop_yield_index": 7457.9
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2018,
++    "crop_yield_index": 7377.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2019,
++    "crop_yield_index": 6384.5
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2020,
++    "crop_yield_index": 6590.9
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2021,
++    "crop_yield_index": 6983.9
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2022,
++    "crop_yield_index": 7176.5
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2023,
++    "crop_yield_index": 6722.1
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2024,
++    "crop_yield_index": 5830.3
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2016,
++    "crop_yield_index": 5242.7
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2017,
++    "crop_yield_index": 4507.3
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2018,
++    "crop_yield_index": 4709.8
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2019,
++    "crop_yield_index": 4695.4
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2020,
++    "crop_yield_index": 4717.2
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2021,
++    "crop_yield_index": 4758.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2022,
++    "crop_yield_index": 6030.7
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2023,
++    "crop_yield_index": 6067.1
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2024,
++    "crop_yield_index": 5962.3
++  },
++  {
++    "nation": "Fiji",
++    "year": 2016,
++    "crop_yield_index": 32766.6
++  },
++  {
++    "nation": "Fiji",
++    "year": 2017,
++    "crop_yield_index": 37019.1
++  },
++  {
++    "nation": "Fiji",
++    "year": 2018,
++    "crop_yield_index": 38894.3
++  },
++  {
++    "nation": "Fiji",
++    "year": 2019,
++    "crop_yield_index": 39657.2
++  },
++  {
++    "nation": "Fiji",
++    "year": 2020,
++    "crop_yield_index": 33526.1
++  },
++  {
++    "nation": "Fiji",
++    "year": 2021,
++    "crop_yield_index": 30787.5
++  },
++  {
++    "nation": "Fiji",
++    "year": 2022,
++    "crop_yield_index": 32757.3
++  },
++  {
++    "nation": "Fiji",
++    "year": 2023,
++    "crop_yield_index": 36765.5
++  },
++  {
++    "nation": "Fiji",
++    "year": 2024,
++    "crop_yield_index": 26793.8
++  },
++  {
++    "nation": "Tonga",
++    "year": 2016,
++    "crop_yield_index": 7383.3
++  },
++  {
++    "nation": "Tonga",
++    "year": 2017,
++    "crop_yield_index": 7094.8
++  },
++  {
++    "nation": "Tonga",
++    "year": 2018,
++    "crop_yield_index": 7082.2
++  },
++  {
++    "nation": "Tonga",
++    "year": 2019,
++    "crop_yield_index": 7136.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2020,
++    "crop_yield_index": 7195.5
++  },
++  {
++    "nation": "Tonga",
++    "year": 2021,
++    "crop_yield_index": 7262.4
++  },
++  {
++    "nation": "Tonga",
++    "year": 2022,
++    "crop_yield_index": 7325.1
++  },
++  {
++    "nation": "Tonga",
++    "year": 2023,
++    "crop_yield_index": 7486.8
++  },
++  {
++    "nation": "Tonga",
++    "year": 2024,
++    "crop_yield_index": 7206.4
++  }
++]
+\ No newline at end of file
+diff --git a/public/data/disaster_affected_persons.json b/public/data/disaster_affected_persons.json
+index 825230f..2382984 100644
+--- a/public/data/disaster_affected_persons.json
++++ b/public/data/disaster_affected_persons.json
+@@ -1,26 +1,122 @@
+ [
+-  { "nation": "Fiji", "year": 2022, "affected_persons": 800 },
+-  { "nation": "Fiji", "year": 2023, "affected_persons": 45000 },
+-  { "nation": "Fiji", "year": 2024, "affected_persons": 4000 },
+-  { "nation": "Fiji", "year": 2025, "affected_persons": 600 },
+-  { "nation": "Solomon Islands", "year": 2022, "affected_persons": 500 },
+-  { "nation": "Solomon Islands", "year": 2023, "affected_persons": 30000 },
+-  { "nation": "Solomon Islands", "year": 2024, "affected_persons": 18000 },
+-  { "nation": "Solomon Islands", "year": 2025, "affected_persons": 7000 },
+-  { "nation": "Vanuatu", "year": 2022, "affected_persons": 400 },
+-  { "nation": "Vanuatu", "year": 2023, "affected_persons": 52000 },
+-  { "nation": "Vanuatu", "year": 2024, "affected_persons": 35000 },
+-  { "nation": "Vanuatu", "year": 2025, "affected_persons": 20000 },
+-  { "nation": "Samoa", "year": 2022, "affected_persons": 300 },
+-  { "nation": "Samoa", "year": 2023, "affected_persons": 15000 },
+-  { "nation": "Samoa", "year": 2024, "affected_persons": 2000 },
+-  { "nation": "Samoa", "year": 2025, "affected_persons": 400 },
+-  { "nation": "Tonga", "year": 2022, "affected_persons": 200 },
+-  { "nation": "Tonga", "year": 2023, "affected_persons": 22000 },
+-  { "nation": "Tonga", "year": 2024, "affected_persons": 12000 },
+-  { "nation": "Tonga", "year": 2025, "affected_persons": 6000 },
+-  { "nation": "Kiribati", "year": 2022, "affected_persons": 150 },
+-  { "nation": "Kiribati", "year": 2023, "affected_persons": 9000 },
+-  { "nation": "Kiribati", "year": 2024, "affected_persons": 7500 },
+-  { "nation": "Kiribati", "year": 2025, "affected_persons": 6800 }
+-]
++  {
++    "nation": "Solomon Islands",
++    "year": 2016,
++    "affected_persons": 60858.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2017,
++    "affected_persons": 51465.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2018,
++    "affected_persons": 194155.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2019,
++    "affected_persons": 1834.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2020,
++    "affected_persons": 2339.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2021,
++    "affected_persons": 240.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2022,
++    "affected_persons": 20080.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2017,
++    "affected_persons": 920.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2018,
++    "affected_persons": 23286.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2019,
++    "affected_persons": 18.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2020,
++    "affected_persons": 246802.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2021,
++    "affected_persons": 1400.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2016,
++    "affected_persons": 633584.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2017,
++    "affected_persons": 0.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2018,
++    "affected_persons": 155726.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2019,
++    "affected_persons": 78045.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2020,
++    "affected_persons": 235921.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2021,
++    "affected_persons": 78030.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2022,
++    "affected_persons": 1787.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2016,
++    "affected_persons": 0.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2017,
++    "affected_persons": 0.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2018,
++    "affected_persons": 84311.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2019,
++    "affected_persons": 640.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2020,
++    "affected_persons": 68.0
++  }
++]
+\ No newline at end of file
+diff --git a/public/data/disaster_economic_loss.json b/public/data/disaster_economic_loss.json
+index 331e9af..087cb65 100644
+--- a/public/data/disaster_economic_loss.json
++++ b/public/data/disaster_economic_loss.json
+@@ -1,26 +1,37 @@
+ [
+-  { "nation": "Fiji", "year": 2022, "economic_loss_usd_million": 5 },
+-  { "nation": "Fiji", "year": 2023, "economic_loss_usd_million": 140 },
+-  { "nation": "Fiji", "year": 2024, "economic_loss_usd_million": 25 },
+-  { "nation": "Fiji", "year": 2025, "economic_loss_usd_million": 6 },
+-  { "nation": "Solomon Islands", "year": 2022, "economic_loss_usd_million": 3 },
+-  { "nation": "Solomon Islands", "year": 2023, "economic_loss_usd_million": 80 },
+-  { "nation": "Solomon Islands", "year": 2024, "economic_loss_usd_million": 55 },
+-  { "nation": "Solomon Islands", "year": 2025, "economic_loss_usd_million": 28 },
+-  { "nation": "Vanuatu", "year": 2022, "economic_loss_usd_million": 4 },
+-  { "nation": "Vanuatu", "year": 2023, "economic_loss_usd_million": 160 },
+-  { "nation": "Vanuatu", "year": 2024, "economic_loss_usd_million": 110 },
+-  { "nation": "Vanuatu", "year": 2025, "economic_loss_usd_million": 70 },
+-  { "nation": "Samoa", "year": 2022, "economic_loss_usd_million": 2 },
+-  { "nation": "Samoa", "year": 2023, "economic_loss_usd_million": 60 },
+-  { "nation": "Samoa", "year": 2024, "economic_loss_usd_million": 10 },
+-  { "nation": "Samoa", "year": 2025, "economic_loss_usd_million": 3 },
+-  { "nation": "Tonga", "year": 2022, "economic_loss_usd_million": 2 },
+-  { "nation": "Tonga", "year": 2023, "economic_loss_usd_million": 95 },
+-  { "nation": "Tonga", "year": 2024, "economic_loss_usd_million": 58 },
+-  { "nation": "Tonga", "year": 2025, "economic_loss_usd_million": 30 },
+-  { "nation": "Kiribati", "year": 2022, "economic_loss_usd_million": 1 },
+-  { "nation": "Kiribati", "year": 2023, "economic_loss_usd_million": 20 },
+-  { "nation": "Kiribati", "year": 2024, "economic_loss_usd_million": 17 },
+-  { "nation": "Kiribati", "year": 2025, "economic_loss_usd_million": 15 }
+-]
++  {
++    "nation": "Vanuatu",
++    "year": 2018,
++    "economic_loss_usd": 64500000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2016,
++    "economic_loss_usd": 374109863.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2018,
++    "economic_loss_usd": 50247780.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2019,
++    "economic_loss_usd": 1090125.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2020,
++    "economic_loss_usd": 24247724.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2016,
++    "economic_loss_usd": 3050475.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2018,
++    "economic_loss_usd": 8579025.0
++  }
++]
+\ No newline at end of file
+diff --git a/public/data/power_generation.json b/public/data/power_generation.json
+index 3d96a98..a946108 100644
+--- a/public/data/power_generation.json
++++ b/public/data/power_generation.json
+@@ -1,26 +1,162 @@
+ [
+-  { "nation": "Fiji", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Fiji", "year": 2023, "power_generation_index": 60 },
+-  { "nation": "Fiji", "year": 2024, "power_generation_index": 93 },
+-  { "nation": "Fiji", "year": 2025, "power_generation_index": 100 },
+-  { "nation": "Solomon Islands", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Solomon Islands", "year": 2023, "power_generation_index": 52 },
+-  { "nation": "Solomon Islands", "year": 2024, "power_generation_index": 64 },
+-  { "nation": "Solomon Islands", "year": 2025, "power_generation_index": 75 },
+-  { "nation": "Vanuatu", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Vanuatu", "year": 2023, "power_generation_index": 45 },
+-  { "nation": "Vanuatu", "year": 2024, "power_generation_index": 58 },
+-  { "nation": "Vanuatu", "year": 2025, "power_generation_index": 66 },
+-  { "nation": "Samoa", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Samoa", "year": 2023, "power_generation_index": 65 },
+-  { "nation": "Samoa", "year": 2024, "power_generation_index": 96 },
+-  { "nation": "Samoa", "year": 2025, "power_generation_index": 100 },
+-  { "nation": "Tonga", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Tonga", "year": 2023, "power_generation_index": 48 },
+-  { "nation": "Tonga", "year": 2024, "power_generation_index": 62 },
+-  { "nation": "Tonga", "year": 2025, "power_generation_index": 78 },
+-  { "nation": "Kiribati", "year": 2022, "power_generation_index": 100 },
+-  { "nation": "Kiribati", "year": 2023, "power_generation_index": 58 },
+-  { "nation": "Kiribati", "year": 2024, "power_generation_index": 55 },
+-  { "nation": "Kiribati", "year": 2025, "power_generation_index": 52 }
+-]
++  {
++    "nation": "Solomon Islands",
++    "year": 2016,
++    "power_generation_index": 96.2
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2017,
++    "power_generation_index": 99.9
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2018,
++    "power_generation_index": 101.9
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2019,
++    "power_generation_index": 104.6
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2020,
++    "power_generation_index": 104.5
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2021,
++    "power_generation_index": 104.0
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2022,
++    "power_generation_index": 105.7
++  },
++  {
++    "nation": "Solomon Islands",
++    "year": 2023,
++    "power_generation_index": 110.9
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2016,
++    "power_generation_index": 75.2
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2017,
++    "power_generation_index": 79.8
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2018,
++    "power_generation_index": 81.5
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2019,
++    "power_generation_index": 84.8
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2020,
++    "power_generation_index": 80.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2021,
++    "power_generation_index": 79.1
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2022,
++    "power_generation_index": 83.2
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2023,
++    "power_generation_index": 83.2
++  },
++  {
++    "nation": "Fiji",
++    "year": 2016,
++    "power_generation_index": 1030.5
++  },
++  {
++    "nation": "Fiji",
++    "year": 2017,
++    "power_generation_index": 1112.6
++  },
++  {
++    "nation": "Fiji",
++    "year": 2018,
++    "power_generation_index": 1140.3
++  },
++  {
++    "nation": "Fiji",
++    "year": 2019,
++    "power_generation_index": 1227.8
++  },
++  {
++    "nation": "Fiji",
++    "year": 2020,
++    "power_generation_index": 1141.9
++  },
++  {
++    "nation": "Fiji",
++    "year": 2021,
++    "power_generation_index": 1094.9
++  },
++  {
++    "nation": "Fiji",
++    "year": 2022,
++    "power_generation_index": 1245.6
++  },
++  {
++    "nation": "Fiji",
++    "year": 2023,
++    "power_generation_index": 1284.5
++  },
++  {
++    "nation": "Tonga",
++    "year": 2016,
++    "power_generation_index": 63.6
++  },
++  {
++    "nation": "Tonga",
++    "year": 2017,
++    "power_generation_index": 66.4
++  },
++  {
++    "nation": "Tonga",
++    "year": 2018,
++    "power_generation_index": 68.8
++  },
++  {
++    "nation": "Tonga",
++    "year": 2019,
++    "power_generation_index": 72.6
++  },
++  {
++    "nation": "Tonga",
++    "year": 2020,
++    "power_generation_index": 74.7
++  },
++  {
++    "nation": "Tonga",
++    "year": 2021,
++    "power_generation_index": 76.6
++  },
++  {
++    "nation": "Tonga",
++    "year": 2022,
++    "power_generation_index": 79.6
++  },
++  {
++    "nation": "Tonga",
++    "year": 2023,
++    "power_generation_index": 81.5
++  }
++]
+\ No newline at end of file
+diff --git a/public/data/tourist_arrivals.json b/public/data/tourist_arrivals.json
+index cdd744d..cd5d96f 100644
+--- a/public/data/tourist_arrivals.json
++++ b/public/data/tourist_arrivals.json
+@@ -1,26 +1,112 @@
+ [
+-  { "nation": "Fiji", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Fiji", "year": 2023, "tourist_arrivals_index": 40 },
+-  { "nation": "Fiji", "year": 2024, "tourist_arrivals_index": 85 },
+-  { "nation": "Fiji", "year": 2025, "tourist_arrivals_index": 97 },
+-  { "nation": "Solomon Islands", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Solomon Islands", "year": 2023, "tourist_arrivals_index": 42 },
+-  { "nation": "Solomon Islands", "year": 2024, "tourist_arrivals_index": 50 },
+-  { "nation": "Solomon Islands", "year": 2025, "tourist_arrivals_index": 58 },
+-  { "nation": "Vanuatu", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Vanuatu", "year": 2023, "tourist_arrivals_index": 35 },
+-  { "nation": "Vanuatu", "year": 2024, "tourist_arrivals_index": 44 },
+-  { "nation": "Vanuatu", "year": 2025, "tourist_arrivals_index": 52 },
+-  { "nation": "Samoa", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Samoa", "year": 2023, "tourist_arrivals_index": 50 },
+-  { "nation": "Samoa", "year": 2024, "tourist_arrivals_index": 90 },
+-  { "nation": "Samoa", "year": 2025, "tourist_arrivals_index": 98 },
+-  { "nation": "Tonga", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Tonga", "year": 2023, "tourist_arrivals_index": 38 },
+-  { "nation": "Tonga", "year": 2024, "tourist_arrivals_index": 48 },
+-  { "nation": "Tonga", "year": 2025, "tourist_arrivals_index": 60 },
+-  { "nation": "Kiribati", "year": 2022, "tourist_arrivals_index": 100 },
+-  { "nation": "Kiribati", "year": 2023, "tourist_arrivals_index": 55 },
+-  { "nation": "Kiribati", "year": 2024, "tourist_arrivals_index": 50 },
+-  { "nation": "Kiribati", "year": 2025, "tourist_arrivals_index": 48 }
+-]
++  {
++    "nation": "Vanuatu",
++    "year": 2016,
++    "tourist_arrivals_index": 351600.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2017,
++    "tourist_arrivals_index": 332700.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2018,
++    "tourist_arrivals_index": 350200.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2019,
++    "tourist_arrivals_index": 256000.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2020,
++    "tourist_arrivals_index": 82400.0
++  },
++  {
++    "nation": "Vanuatu",
++    "year": 2022,
++    "tourist_arrivals_index": 65000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2016,
++    "tourist_arrivals_index": 963000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2017,
++    "tourist_arrivals_index": 1027000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2018,
++    "tourist_arrivals_index": 1058000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2019,
++    "tourist_arrivals_index": 969000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2020,
++    "tourist_arrivals_index": 168200.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2021,
++    "tourist_arrivals_index": 32000.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2022,
++    "tourist_arrivals_index": 652200.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2023,
++    "tourist_arrivals_index": 929740.0
++  },
++  {
++    "nation": "Fiji",
++    "year": 2024,
++    "tourist_arrivals_index": 928938.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2016,
++    "tourist_arrivals_index": 86700.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2017,
++    "tourist_arrivals_index": 86600.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2018,
++    "tourist_arrivals_index": 77300.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2019,
++    "tourist_arrivals_index": 94000.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2020,
++    "tourist_arrivals_index": 11500.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2021,
++    "tourist_arrivals_index": 200.0
++  },
++  {
++    "nation": "Tonga",
++    "year": 2022,
++    "tourist_arrivals_index": 22300.0
++  }
++]
+\ No newline at end of file
+diff --git a/src/App.jsx b/src/App.jsx
+index e7b8e81..abb62be 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -7,6 +7,29 @@ import PacificBorder from './components/PacificBorder.jsx'
+ import { useSelection } from './hooks/useSelection.js'
+ import { useRippleData } from './hooks/useRippleData.js'
+ 
++const DATA_SOURCES = [
++  {
++    label: 'Number of directly affected persons attributed to disasters — Pacific Data Hub (SPC)',
++    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AFFCT.........&pd=,&to[TIME_PERIOD]=false&lb=bt',
++  },
++  {
++    label: 'Direct disaster economic loss — Pacific Data Hub (SPC)',
++    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AALT...._T.....&pd=,&to[TIME_PERIOD]=false',
++  },
++  {
++    label: 'Crop yield — Pacific Data Hub (SPC)',
++    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.CROP_YIELD.&pd=,&to[TIME_PERIOD]=false',
++  },
++  {
++    label: 'Tourist arrivals — Pacific Data Hub (SPC)',
++    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.TRSM_ARR.&pd=,&to[TIME_PERIOD]=false',
++  },
++  {
++    label: 'Power generation — Pacific Data Hub (SPC)',
++    url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.POWER_GEN.&pd=,&to[TIME_PERIOD]=false',
++  },
++]
++
+ function selectionAnnouncement(selected) {
+   if (selected.length === 0) return ''
+   if (selected.length === 1) return `${selected[0]} selected. Showing its ripple chain below.`
+@@ -40,13 +63,7 @@ export default function App() {
+         <RippleChain data={data} selectedNations={selected} />
+         <ComparisonView data={data} selectedNations={selected} />
+         <PacificBorder />
+-        const DATA_SOURCES = [
+-  { label: 'Number of directly affected persons attributed to disasters — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AFFCT.........&pd=,&to[TIME_PERIOD]=false&lb=bt' },
+-  { label: 'Direct disaster economic loss — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=ds%3ASPC2&df[id]=DF_SDG_11&df[ag]=SPC&df[vs]=3.0&dq=A.VC_DSR_AALT...._T.....&pd=,&to[TIME_PERIOD]=false' },
+-  { label: 'Crop yield — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.CROP_YIELD.&pd=,&to[TIME_PERIOD]=false' },
+-  { label: 'Tourist arrivals — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.TRSM_ARR.&pd=,&to[TIME_PERIOD]=false' },
+-  { label: 'Power generation — Pacific Data Hub (SPC)', url: 'https://stats.pacificdata.org/vis?lc=en&df[ds]=SPC2&df[id]=DF_CLIMATE_CHANGE&df[ag]=SPC&df[vs]=1.0&av=true&dq=A.POWER_GEN.&pd=,&to[TIME_PERIOD]=false' },
+-]
++        <CitationPanel sources={DATA_SOURCES} />
+       </main>
+     </>
+   )
+diff --git a/src/components/CitationPanel.jsx b/src/components/CitationPanel.jsx
+index 89c3739..7f2be90 100644
+--- a/src/components/CitationPanel.jsx
++++ b/src/components/CitationPanel.jsx
+@@ -31,13 +31,19 @@ export default function CitationPanel({ sources = [] }) {
+ 
+         <div>
+           <h2 className="font-semibold mb-2">About this data</h2>
+-          {/* TODO: remove this paragraph once real data replaces the
+-              placeholder numbers -- see README.md "Scope (locked)" and
+-              data-pipeline/clean_data.py. Leaving fabricated-looking
+-              numbers unlabeled on a public page would be misleading. */}
+           <p className="opacity-70">
+-            This is a work-in-progress entry for the 2026 Pacific DataViz Challenge. Some figures
+-            shown are placeholder data used for development and do not represent real events.
++            Figures are drawn from official Pacific Data Hub statistics for Solomon Islands,
++            Vanuatu, Fiji, and Tonga. Data coverage varies by country and metric — direct
++            disaster economic loss in particular is patchy for Solomon Islands and Vanuatu in
++            the official dataset, and is labelled as unavailable where that's the case rather
++            than left blank without explanation.
++          </p>
++          <p className="opacity-70 mt-3">
++            Even the data about these disasters is unevenly distributed — some nations have the
++            infrastructure to measure and report losses in detail, others don't. As disasters
++            grow more frequent, that gap will matter almost as much as the disasters themselves.
++          </p>
++          <p className="opacity-70 mt-3">
+             This site is illustrative and isn't intended to inform policy, funding, or financial
+             decisions.
+           </p>
+diff --git a/src/components/ComparisonView.jsx b/src/components/ComparisonView.jsx
+index fb5dc7f..8c0e83d 100644
+--- a/src/components/ComparisonView.jsx
++++ b/src/components/ComparisonView.jsx
+@@ -42,14 +42,17 @@ function NationSummary({ nation, data, color }) {
+             .sort((a, b) => a.year - b.year)
+           const eventRow = rows.find((r) => r.year === EVENT_YEAR)
+           const latestRow = rows[rows.length - 1]
+-          if (!eventRow || !latestRow) return null
+ 
+           return (
+             <li key={m.key} className="flex justify-between gap-4">
+               <span className="opacity-70">{m.label}</span>
+-              <span>
+-                {eventRow[m.field]} → {latestRow[m.field]}
+-              </span>
++              {eventRow && latestRow ? (
++                <span>
++                  {eventRow[m.field]} → {latestRow[m.field]}
++                </span>
++              ) : (
++                <span className="opacity-50 italic text-xs">No data available</span>
++              )}
+             </li>
+           )
+         })}
+diff --git a/src/components/RippleChain.jsx b/src/components/RippleChain.jsx
+index 94f733f..ad1120f 100644
+--- a/src/components/RippleChain.jsx
++++ b/src/components/RippleChain.jsx
+@@ -44,6 +44,7 @@ export default function RippleChain({ data, selectedNations }) {
+ 
+ function MetricChart({ title, allRows, nations, valueField }) {
+   const ref = useRef(null)
++  const nationsMissing = nations.filter((n) => !allRows.some((d) => d.nation === n))
+ 
+   useEffect(() => {
+     if (!allRows || allRows.length === 0 || !ref.current) return
+@@ -119,7 +120,18 @@ function MetricChart({ title, allRows, nations, valueField }) {
+   return (
+     <div>
+       <h3 className="text-sm font-medium mb-1">{title}</h3>
+-      <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
++      {allRows.length > 0 ? (
++        <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
++      ) : (
++        <p className="text-sm opacity-60 italic py-8 text-center">
++          Data not available for this metric.
++        </p>
++      )}
++      {allRows.length > 0 && nationsMissing.length > 0 && (
++        <p className="text-xs opacity-60 italic mt-1">
++          No data available for {nationsMissing.join(' and ')}.
++        </p>
++      )}
+       {/* Screen-reader-only data table -- the chart above conveys shape
+           and trend visually, this gives the same numbers as text. */}
+       <table className="sr-only">
+diff --git a/src/utils/metrics.js b/src/utils/metrics.js
+index a9e0d63..190e439 100644
+--- a/src/utils/metrics.js
++++ b/src/utils/metrics.js
+@@ -1,6 +1,5 @@
+ // Shared metric definitions used by RippleChain and ComparisonView.
+-// Filenames match the DATASETS TODO list in data-pipeline/clean_data.py.
+-// Currently backed by DUMMY data in public/data/ -- see README TODOs.
++// Filenames match the DATASETS dict in data-pipeline/clean_data.py.
+ export const METRICS = [
+   {
+     key: 'affected_persons',
+@@ -11,25 +10,25 @@ export const METRICS = [
+   {
+     key: 'economic_loss',
+     file: 'disaster_economic_loss.json',
+-    field: 'economic_loss_usd_million',
+-    label: 'Economic loss (US$M)',
++    field: 'economic_loss_usd',
++    label: 'Economic loss (US$)',
+   },
+   {
+     key: 'crop_yield',
+     file: 'crop_yield.json',
+     field: 'crop_yield_index',
+-    label: 'Crop yield index',
++    label: 'Crop yield (kg/ha)',
+   },
+   {
+     key: 'tourist_arrivals',
+     file: 'tourist_arrivals.json',
+     field: 'tourist_arrivals_index',
+-    label: 'Tourist arrivals index',
++    label: 'Tourist arrivals',
+   },
+   {
+     key: 'power_generation',
+     file: 'power_generation.json',
+     field: 'power_generation_index',
+-    label: 'Power generation index',
++    label: 'Power generation (GWh)',
+   },
+ ]
