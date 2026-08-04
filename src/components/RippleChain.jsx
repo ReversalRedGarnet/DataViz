@@ -27,7 +27,7 @@ export default function RippleChain({ data, selectedNations }) {
     <Section>
       <h2 className="text-xl font-semibold mb-2">The ripple chain</h2>
       <SelectionLegend selected={selectedNations} />
-      <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-8 grid-cols-1 max-w-xl mx-auto">
         {METRICS.map((m) => (
           <MetricChart
             key={m.key}
@@ -123,12 +123,18 @@ function MetricChart({ title, allRows, nations, valueField }) {
       {allRows.length > 0 ? (
         <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
       ) : (
-        <p className="text-sm opacity-60 italic py-8 text-center">
+        <p
+          className="text-sm opacity-60 italic py-8 text-center underline decoration-dotted decoration-ink/40 cursor-help"
+          title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+        >
           Data not available for this metric.
         </p>
       )}
       {allRows.length > 0 && nationsMissing.length > 0 && (
-        <p className="text-xs opacity-60 italic mt-1">
+        <p
+          className="text-xs opacity-60 italic mt-1 underline decoration-dotted decoration-ink/40 cursor-help inline-block"
+          title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+        >
           No data available for {nationsMissing.join(' and ')}.
         </p>
       )}
