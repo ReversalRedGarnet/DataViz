@@ -44,6 +44,7 @@ export default function RippleChain({ data, selectedNations }) {
 
 function MetricChart({ title, allRows, nations, valueField }) {
   const ref = useRef(null)
+  const nationsMissing = nations.filter((n) => !allRows.some((d) => d.nation === n))
 
   useEffect(() => {
     if (!allRows || allRows.length === 0 || !ref.current) return
@@ -119,7 +120,18 @@ function MetricChart({ title, allRows, nations, valueField }) {
   return (
     <div>
       <h3 className="text-sm font-medium mb-1">{title}</h3>
-      <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
+      {allRows.length > 0 ? (
+        <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
+      ) : (
+        <p className="text-sm opacity-60 italic py-8 text-center">
+          Data not available for this metric.
+        </p>
+      )}
+      {allRows.length > 0 && nationsMissing.length > 0 && (
+        <p className="text-xs opacity-60 italic mt-1">
+          No data available for {nationsMissing.join(' and ')}.
+        </p>
+      )}
       {/* Screen-reader-only data table -- the chart above conveys shape
           and trend visually, this gives the same numbers as text. */}
       <table className="sr-only">
