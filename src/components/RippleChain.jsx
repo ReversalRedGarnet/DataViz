@@ -1,16 +1,20 @@
-import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { useEffect, useMemo, useRef } from 'react'
 import { METRICS } from '../utils/metrics.js'
-import { SELECTION_COLORS } from '../utils/theme.js'
 import { resetSvg } from '../utils/d3helpers.js'
+import { renderMetricChart, CHART_WIDTH, CHART_HEIGHT } from '../utils/chartRenderers.jsx'
+import { useTooltip } from '../hooks/useTooltip.js'
 import Section from './Section.jsx'
 import SelectionLegend from './SelectionLegend.jsx'
 import EmptyState from './EmptyState.jsx'
+import NoDataNote from './NoDataNote.jsx'
+import Tooltip from './Tooltip.jsx'
 
 // The connected sequence view: one small chart per stage of the chain,
 // filtered to whichever nation(s) are selected on the map. Chart
 // implementation: D3 only -- no Plotly / Observable Plot, per the
-// locked stack in README.md.
+// locked stack in README.md. Which chart *type* each metric uses (bar/
+// line/area) is decided in metrics.js, based on how complete each
+// metric's data actually is.
 //
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
@@ -18,130 +22,94 @@ import EmptyState from './EmptyState.jsx'
 //     MapView. Order matters here: it drives which colour each nation
 //     gets, kept in sync with the map's numbered badges.
 export default function RippleChain({ data, selectedNations }) {
+  const { containerRef, tooltip, showTooltip, hideTooltip } = useTooltip()
+
+  // Filtering here (rather than inline in the METRICS.map below) and
+  // memoizing on [data, selectedNations] matters more than it looks:
+  // the tooltip state above lives in this component, so hovering a
+  // chart point re-renders RippleChain. Without memoizing, every hover
+  // would produce brand-new `allRows` arrays for all five charts,
+  // which -- since each chart's draw effect depends on `allRows` --
+  // would re-run every D3 draw and replay every entrance animation on
+  // every single hover. Memoizing keeps those array references stable
+  // across a tooltip-only re-render, so only an actual selection
+  // change redraws the charts.
+  const filteredByMetric = useMemo(() => {
+    if (!data) return null
+    const result = {}
+    for (const m of METRICS) {
+      result[m.key] = data[m.key].filter((d) => selectedNations.includes(d.nation))
+    }
+    return result
+  }, [data, selectedNations])
+
   if (!data) return <EmptyState>Ripple chain -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length === 0) {
     return <EmptyState>Click a country on the map above to see its ripple chain.</EmptyState>
   }
 
   return (
-    <Section>
-      <h2 className="text-xl font-semibold mb-2">The ripple chain</h2>
-      <SelectionLegend selected={selectedNations} />
-      <div className="grid gap-8 grid-cols-1 max-w-xl mx-auto">
-        {METRICS.map((m) => (
-          <MetricChart
-            key={m.key}
-            title={m.label}
-            allRows={data[m.key].filter((d) => selectedNations.includes(d.nation))}
-            nations={selectedNations}
-            valueField={m.field}
-          />
-        ))}
+    <Section className="animate-fade-in">
+      <div ref={containerRef} className="relative mx-auto max-w-2xl">
+        <h2 className="mb-2 text-xl font-semibold">The ripple chain</h2>
+        <SelectionLegend selected={selectedNations} />
+        <div className="mt-2 grid grid-cols-1 gap-10">
+          {METRICS.map((m) => (
+            <MetricChart
+              key={m.key}
+              metric={m}
+              allRows={filteredByMetric[m.key]}
+              nations={selectedNations}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
+            />
+          ))}
+        </div>
+        <Tooltip tooltip={tooltip} />
       </div>
     </Section>
   )
 }
 
-function MetricChart({ title, allRows, nations, valueField }) {
+function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip }) {
+  const { key, label, field: valueField, chartType, format } = metric
   const ref = useRef(null)
   const nationsMissing = nations.filter((n) => !allRows.some((d) => d.nation === n))
 
   useEffect(() => {
     if (!allRows || allRows.length === 0 || !ref.current) return
 
-    const width = 280
-    const height = 170
-    const margin = { top: 8, right: 12, bottom: 20, left: 44 }
-
-    const svg = resetSvg(ref, width, height)
-
-    // Colour is assigned by SELECTION ORDER (nations[0], nations[1]),
-    // not by data-encounter order, so it always matches the map's 1 / 2
-    // badges regardless of which JSON row happens to come first.
-    const color = d3.scaleOrdinal(nations, SELECTION_COLORS)
-
-    const x = d3
-      .scaleLinear()
-      .domain(d3.extent(allRows, (d) => d.year))
-      .range([margin.left, width - margin.right])
-
-    const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(allRows, (d) => d[valueField]) * 1.1])
-      .nice()
-      .range([height - margin.bottom, margin.top])
-
-    svg
-      .append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(4).tickFormat(d3.format('d')))
-      .attr('font-size', 9)
-
-    svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(4))
-      .attr('font-size', 9)
-
-    const line = d3
-      .line()
-      .x((d) => x(d.year))
-      .y((d) => y(d[valueField]))
-
-    for (const nation of nations) {
-      const series = allRows.filter((d) => d.nation === nation).sort((a, b) => a.year - b.year)
-      if (series.length === 0) continue
-
-      svg
-        .append('path')
-        .datum(series)
-        .attr('fill', 'none')
-        .attr('stroke', color(nation))
-        .attr('stroke-width', 2)
-        .attr('d', line)
-
-      // Small hoverable point per data value -- native <title> gives a
-      // tooltip with the exact number on hover/focus, and is read by
-      // screen readers too.
-      svg
-        .selectAll(`circle.point-${nation.replace(/\s+/g, '')}`)
-        .data(series)
-        .join('circle')
-        .attr('cx', (d) => x(d.year))
-        .attr('cy', (d) => y(d[valueField]))
-        .attr('r', 3)
-        .attr('fill', color(nation))
-        .style('cursor', 'default')
-        .append('title')
-        .text((d) => `${nation}, ${d.year}: ${d[valueField]}`)
-    }
-  }, [allRows, nations, valueField])
+    const svg = resetSvg(ref, CHART_WIDTH, CHART_HEIGHT)
+    renderMetricChart(svg, { allRows, nations, valueField, chartType, format, showTooltip, hideTooltip })
+  }, [allRows, nations, valueField, chartType, format, showTooltip, hideTooltip])
 
   return (
-    <div>
-      <h3 className="text-sm font-medium mb-1">{title}</h3>
+    <div key={key}>
+      <h3 className="mb-2 text-sm font-medium">{label}</h3>
       {allRows.length > 0 ? (
-        <svg ref={ref} role="img" aria-label={title} className="w-full h-auto" />
+        <svg ref={ref} role="img" aria-label={label} className="h-auto w-full" />
       ) : (
-        <p
-          className="text-sm opacity-60 italic py-8 text-center underline decoration-dotted decoration-ink/40 cursor-help"
-          title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+        <NoDataNote
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+          className="block py-8 text-center text-sm italic opacity-60"
         >
           Data not available for this metric.
-        </p>
+        </NoDataNote>
       )}
       {allRows.length > 0 && nationsMissing.length > 0 && (
-        <p
-          className="text-xs opacity-60 italic mt-1 underline decoration-dotted decoration-ink/40 cursor-help inline-block"
-          title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+        <NoDataNote
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+          className="mt-1 inline-block text-xs italic opacity-60"
         >
           No data available for {nationsMissing.join(' and ')}.
-        </p>
+        </NoDataNote>
       )}
       {/* Screen-reader-only data table -- the chart above conveys shape
           and trend visually, this gives the same numbers as text. */}
       <table className="sr-only">
-        <caption>{title} by year and country</caption>
+        <caption>{label} by year and country</caption>
         <thead>
           <tr>
             <th scope="col">Country</th>

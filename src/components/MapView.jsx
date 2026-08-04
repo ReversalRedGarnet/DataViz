@@ -2,8 +2,11 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { feature } from 'topojson-client'
 import Section from './Section.jsx'
+import Tooltip from './Tooltip.jsx'
+import { useTooltip } from '../hooks/useTooltip.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
 import { resetSvg } from '../utils/d3helpers.js'
+import { motionDuration } from '../utils/motion.js'
 
 // Illustrative Pacific map: real coastlines with fixed markers on top,
 // pan + zoom via d3-zoom, click to select up to two nations. No tile
@@ -16,15 +19,42 @@ import { resetSvg } from '../utils/d3helpers.js'
 // Locked nation set -- the four countries Cyclone Harold hit in April
 // 2020, see README.md -> "Scope (locked)". Coordinates are approximate
 // (capital city), fine for an illustrative map, not for navigation.
+// `blurb` feeds the marker tooltip -- one line of real context per
+// nation instead of just the bare name a native <title> gave before.
 export const NATIONS = [
-  { name: 'Fiji', lat: -18.14, lon: 178.44 },
-  { name: 'Solomon Islands', lat: -9.43, lon: 159.95 },
-  { name: 'Vanuatu', lat: -17.73, lon: 168.32 },
-  { name: 'Tonga', lat: -21.14, lon: -175.2 },
+  { name: 'Fiji', lat: -18.14, lon: 178.44, blurb: 'Struck by the same cyclone; moderate, uneven impact.' },
+  {
+    name: 'Solomon Islands',
+    lat: -9.43,
+    lon: 159.95,
+    blurb: 'A different kind of impact that same week: a ferry capsize, not storm strength.',
+  },
+  { name: 'Vanuatu', lat: -17.73, lon: 168.32, blurb: 'Hit hardest by Cyclone Harold, April 2020.' },
+  { name: 'Tonga', lat: -21.14, lon: -175.2, blurb: 'The lightest direct impact of the four.' },
 ]
 
 const WIDTH = 700
 const HEIGHT = 460
+
+// Builds the tooltip content for a marker from current selection state,
+// so the same "tap to select / tap to compare / tap to deselect" hint
+// stays accurate no matter when the hover/focus/tap happens.
+function markerTooltipContent(nation, selected) {
+  const i = selected.indexOf(nation.name)
+  let status
+  if (i !== -1) status = 'Selected -- tap again to deselect.'
+  else if (selected.length >= 2) status = 'Tap to swap into the comparison.'
+  else if (selected.length === 1) status = 'Tap to compare with your first pick.'
+  else status = 'Tap to select.'
+
+  return (
+    <>
+      <p className="font-semibold">{nation.name}</p>
+      <p className="opacity-80">{nation.blurb}</p>
+      <p className="mt-1 opacity-60">{status}</p>
+    </>
+  )
+}
 
 // Props:
 //   selected -- array of up to two nation names, in the order picked
@@ -34,6 +64,18 @@ export default function MapView({ selected, onToggle, onClear }) {
   const svgRef = useRef(null)
   const gRef = useRef(null)
   const zoomRef = useRef(null)
+  const { containerRef, tooltip, showTooltip, hideTooltip } = useTooltip()
+
+  // The marker-setup effect below runs once on mount (see the comment
+  // at its end), so its D3 event closures would otherwise capture
+  // `selected` at that moment and never see later selections. Reading
+  // through a ref keeps the tooltip's "tap to compare / deselect" hint
+  // current without rebuilding the whole map -- which would reset the
+  // user's pan/zoom position -- on every selection change.
+  const selectedRef = useRef(selected)
+  useEffect(() => {
+    selectedRef.current = selected
+  }, [selected])
 
   // Build the map once: basemap, projection, markers, zoom behaviour.
   // Selection colour updates happen in the effect below so panning/
@@ -130,16 +172,27 @@ export default function MapView({ selected, onToggle, onClear }) {
         .attr('role', 'button')
         .attr('tabindex', 0)
         .attr('aria-label', (d) => `Select ${d.name}`)
-        .on('click', (_, d) => onToggle(d.name))
+        .on('click', (event, d) => {
+          onToggle(d.name)
+          // selectedRef hasn't updated for this toggle yet, but the
+          // status line is one beat behind for a single tap at most --
+          // the next hover/focus/tap shows the settled state.
+          showTooltip(event, markerTooltipContent(d, selectedRef.current))
+        })
         .on('keydown', (event, d) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
             onToggle(d.name)
           }
         })
-
-      // Native tooltip on hover/focus, also read aloud by screen readers.
-      marker.append('title').text((d) => d.name)
+        .on('pointerenter pointermove', (event, d) => {
+          showTooltip(event, markerTooltipContent(d, selectedRef.current))
+        })
+        .on('pointerleave', hideTooltip)
+        .on('focus', (event, d) => {
+          showTooltip(event, markerTooltipContent(d, selectedRef.current))
+        })
+        .on('blur', hideTooltip)
 
       // Larger invisible circle purely so touch/mouse users get a
       // comfortable tap target -- doesn't change the visible dot size.
@@ -159,6 +212,7 @@ export default function MapView({ selected, onToggle, onClear }) {
         .attr('fill', '#5B8FA3')
         .attr('stroke', 'white')
         .attr('stroke-width', 1.5)
+        .style('transition', 'r 150ms ease-out')
 
       marker
         .append('text')
@@ -179,6 +233,16 @@ export default function MapView({ selected, onToggle, onClear }) {
         .attr('font-size', 11)
         .attr('fill', 'currentColor')
         .style('pointer-events', 'none')
+
+      // A little hover/focus "grow" on the dot itself -- cheap visual
+      // feedback that something is interactive, on top of the tooltip.
+      marker
+        .on('pointerenter.grow', function () {
+          d3.select(this).select('circle.marker-dot').attr('r', 9)
+        })
+        .on('pointerleave.grow', function () {
+          d3.select(this).select('circle.marker-dot').attr('r', 7)
+        })
     }
 
     setup()
@@ -191,35 +255,35 @@ export default function MapView({ selected, onToggle, onClear }) {
 
   // Recolour markers and show a 1 / 2 badge on selection change, without
   // rebuilding the map (which would reset the user's pan/zoom position).
+  // Colour and badge fade/transition rather than snapping instantly, so
+  // picking a second country reads as one smooth handoff.
   useEffect(() => {
     if (!gRef.current) return
     const markers = gRef.current.selectAll('g.marker')
+    const duration = motionDuration(200)
 
     markers
       .select('circle.marker-dot')
+      .transition()
+      .duration(duration)
       .attr('fill', (d) => {
         const i = selected.indexOf(d.name)
         return i === -1 ? '#5B8FA3' : SELECTION_COLORS[i]
       })
 
-    markers.select('text.marker-badge').text((d) => {
-      const i = selected.indexOf(d.name)
-      return i === -1 ? '' : String(i + 1)
-    })
+    markers
+      .select('text.marker-badge')
+      .text((d) => {
+        const i = selected.indexOf(d.name)
+        return i === -1 ? '' : String(i + 1)
+      })
   }, [selected])
-
-  // Respect the OS-level "reduce motion" setting (relevant for vestibular
-  // disorders) by skipping the animation rather than forcing it.
-  function transitionDuration() {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    return prefersReduced ? 0 : 200
-  }
 
   function zoomBy(factor) {
     if (!zoomRef.current || !svgRef.current) return
     d3.select(svgRef.current)
       .transition()
-      .duration(transitionDuration())
+      .duration(motionDuration(200))
       .call(zoomRef.current.scaleBy, factor)
   }
 
@@ -227,29 +291,29 @@ export default function MapView({ selected, onToggle, onClear }) {
     if (!zoomRef.current || !svgRef.current) return
     d3.select(svgRef.current)
       .transition()
-      .duration(transitionDuration())
+      .duration(motionDuration(200))
       .call(zoomRef.current.transform, d3.zoomIdentity)
   }
 
   return (
-    <Section tone="ocean">
-      <h2 className="text-xl font-semibold mb-2">Explore the Pacific</h2>
-      <p className="text-sm opacity-70 mb-3">
+    <Section>
+      <h2 className="mb-2 text-xl font-semibold">Explore the Pacific</h2>
+      <p className="mb-3 text-sm opacity-70">
         Tap a marker to select it, tap a second one to compare. Drag to pan, pinch to zoom, or use
         the buttons.
       </p>
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <svg
           ref={svgRef}
           role="img"
           aria-label="Map of the Pacific with four selectable nations"
-          className="w-full h-auto border-2 border-ink/15 rounded-2xl shadow-sm"
+          className="h-auto w-full rounded-2xl border-2 border-ink/15 shadow-sm"
         />
         <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
           <button
             type="button"
             onClick={() => zoomBy(1.5)}
-            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-lg font-medium text-ink hover:bg-white/70 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
             aria-label="Zoom in"
           >
             +
@@ -257,7 +321,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={() => zoomBy(1 / 1.5)}
-            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-lg font-medium text-ink hover:bg-white/70 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
             aria-label="Zoom out"
           >
             −
@@ -265,22 +329,25 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={resetView}
-            className="w-9 h-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm flex items-center justify-center text-xs font-medium text-ink hover:bg-white/70 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-xs font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
             aria-label="Reset view"
           >
             ⟲
           </button>
         </div>
+        <Tooltip tooltip={tooltip} />
       </div>
-      {selected.length > 0 && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="mt-3 text-sm underline opacity-70 hover:opacity-100"
-        >
-          Clear selection
-        </button>
-      )}
+      <div className="mt-3 min-h-[1.25rem]">
+        {selected.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="animate-fade-in text-sm opacity-70 underline transition-opacity duration-150 hover:opacity-100"
+          >
+            Clear selection
+          </button>
+        )}
+      </div>
     </Section>
   )
 }

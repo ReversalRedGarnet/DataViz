@@ -59,8 +59,11 @@ export default function App() {
       <main id="main-content" className="min-h-screen">
         <PacificBorder />
         <Hero />
+        <PacificBorder flip />
         <MapView selected={selected} onToggle={toggle} onClear={clear} />
+        <PacificBorder />
         <RippleChain data={data} selectedNations={selected} />
+        <PacificBorder flip />
         <ComparisonView data={data} selectedNations={selected} />
         <PacificBorder />
         <CitationPanel sources={DATA_SOURCES} />

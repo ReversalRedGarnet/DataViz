@@ -1,7 +1,10 @@
 import { METRICS } from '../utils/metrics.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
+import { useTooltip } from '../hooks/useTooltip.js'
 import Section from './Section.jsx'
 import EmptyState from './EmptyState.jsx'
+import NoDataNote from './NoDataNote.jsx'
+import Tooltip from './Tooltip.jsx'
 
 // Side-by-side view of the currently selected nations across each stage
 // of the ripple chain, comparing the event year against the latest year
@@ -14,28 +17,40 @@ import EmptyState from './EmptyState.jsx'
 const EVENT_YEAR = 2020 // Cyclone Harold, April 2020
 
 export default function ComparisonView({ data, selectedNations }) {
-  if (!data) return <EmptyState tone="sun">Comparison -- waiting on data.</EmptyState>
+  const { containerRef, tooltip, showTooltip, hideTooltip } = useTooltip()
+
+  if (!data) return <EmptyState>Comparison -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length < 2) {
-    return <EmptyState tone="sun">Select a second country on the map to compare.</EmptyState>
+    return <EmptyState>Select a second country on the map to compare.</EmptyState>
   }
 
   return (
-    <Section tone="sun">
-      <h2 className="text-xl font-semibold mb-4">Compare recovery</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {selectedNations.map((nation, i) => (
-          <NationSummary key={nation} nation={nation} data={data} color={SELECTION_COLORS[i]} />
-        ))}
+    <Section className="animate-fade-in">
+      <div ref={containerRef} className="relative">
+        <h2 className="mb-6 text-xl font-semibold">Compare recovery</h2>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {selectedNations.map((nation, i) => (
+            <NationSummary
+              key={nation}
+              nation={nation}
+              data={data}
+              color={SELECTION_COLORS[i]}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
+            />
+          ))}
+        </div>
+        <Tooltip tooltip={tooltip} />
       </div>
     </Section>
   )
 }
 
-function NationSummary({ nation, data, color }) {
+function NationSummary({ nation, data, color, showTooltip, hideTooltip }) {
   return (
-    <div className="bg-white/70 rounded-2xl p-4 border-l-4" style={{ borderColor: color }}>
-      <h3 className="font-semibold text-lg mb-3">{nation}</h3>
-      <ul className="space-y-2 text-sm">
+    <div className="rounded-2xl border-l-4 bg-white/70 p-6" style={{ borderColor: color }}>
+      <h3 className="mb-4 text-lg font-semibold">{nation}</h3>
+      <ul className="space-y-3 text-sm">
         {METRICS.map((m) => {
           const rows = (data[m.key] ?? [])
             .filter((d) => d.nation === nation)
@@ -48,15 +63,16 @@ function NationSummary({ nation, data, color }) {
               <span className="opacity-70">{m.label}</span>
               {eventRow && latestRow ? (
                 <span>
-                  {eventRow[m.field]} → {latestRow[m.field]}
+                  {m.format(eventRow[m.field])} → {m.format(latestRow[m.field])}
                 </span>
               ) : (
-                <span
-                  className="opacity-50 italic text-xs underline decoration-dotted decoration-ink/40 cursor-help"
-                  title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+                <NoDataNote
+                  showTooltip={showTooltip}
+                  hideTooltip={hideTooltip}
+                  className="text-xs italic opacity-50"
                 >
                   No data available
-                </span>
+                </NoDataNote>
               )}
             </li>
           )
