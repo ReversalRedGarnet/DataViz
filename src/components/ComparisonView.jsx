@@ -33,7 +33,7 @@ export default function ComparisonView({ data, selectedNations }) {
 
 function NationSummary({ nation, data, color }) {
   return (
-    <div className="bg-white/70 rounded-lg p-4 border-l-4" style={{ borderColor: color }}>
+    <div className="bg-white/70 rounded-2xl p-4 border-l-4" style={{ borderColor: color }}>
       <h3 className="font-semibold text-lg mb-3">{nation}</h3>
       <ul className="space-y-2 text-sm">
         {METRICS.map((m) => {
@@ -51,7 +51,12 @@ function NationSummary({ nation, data, color }) {
                   {eventRow[m.field]} → {latestRow[m.field]}
                 </span>
               ) : (
-                <span className="opacity-50 italic text-xs">No data available</span>
+                <span
+                  className="opacity-50 italic text-xs underline decoration-dotted decoration-ink/40 cursor-help"
+                  title="This metric isn't consistently reported by every country in the official Pacific Data Hub dataset -- smaller nations often have less capacity to compile detailed disaster statistics. As disasters grow more frequent, closing that reporting gap will matter too."
+                >
+                  No data available
+                </span>
               )}
             </li>
           )
