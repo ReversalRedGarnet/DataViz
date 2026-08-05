@@ -14,6 +14,13 @@ export default {
         'sun-light': '#FBF1DC',
         ink: '#24333A',
         sand: '#FAF7F0',
+        // A single, restrained extra neutral -- used sparingly (see
+        // Section.jsx) for the two sections that read as an editorial
+        // "panel" (BigPicture, Compare recovery) rather than the
+        // interactive canvas (Hero/Map/RippleChain stay on plain
+        // sand). Deliberately not a new hue, just a slightly deeper
+        // warm neutral in the same family as sand.
+        panel: '#F1EADC',
       },
     },
   },

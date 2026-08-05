@@ -5,10 +5,18 @@ import { motionDuration } from './motion.js'
 // Shared chart geometry -- every metric chart in RippleChain draws at
 // this size inside this margin, so which chartType a metric uses
 // (see metrics.js) doesn't also shift the layout of the grid it sits
-// in.
-export const CHART_WIDTH = 280
-export const CHART_HEIGHT = 170
-export const CHART_MARGIN = { top: 8, right: 12, bottom: 20, left: 44 }
+// in. Sized to sit comfortably two-per-row (see RippleChain.jsx) --
+// smaller than a single full-width chart used to be, so more of the
+// chain is visible at once without scrolling through five large
+// charts stacked in a single column.
+export const CHART_WIDTH = 260
+export const CHART_HEIGHT = 148
+export const CHART_MARGIN = { top: 10, right: 10, bottom: 20, left: 40 }
+
+// A gentle overshoot easing -- entrances "pop" into place with a
+// slight bounce rather than just easing to a stop, matching the same
+// feel as the CSS .animate-pop-in used everywhere else on the page.
+const POP_EASE = d3.easeBackOut.overshoot(1.4)
 
 function slug(nation) {
   return nation.replace(/\s+/g, '')
@@ -21,6 +29,19 @@ function pointTooltip(nation, year, value, format) {
       <p className="opacity-80">
         {year}: {format(value)}
       </p>
+    </>
+  )
+}
+
+function stormPointTooltip(row) {
+  return (
+    <>
+      <p className="font-semibold">{row.name}</p>
+      <p className="opacity-80">{row.categoryLabel}</p>
+      <p className="opacity-80">
+        {row.deaths} {row.deaths === 1 ? 'death' : 'deaths'}
+      </p>
+      <p className="mt-1 opacity-70">{row.fact}</p>
     </>
   )
 }
@@ -40,11 +61,12 @@ function pointTooltip(nation, year, value, format) {
 //             of a rise or drop is the point.
 //
 // Every mark responds to hover, tap (click), AND the shared tooltip's
-// own "tap outside to dismiss" -- see useTooltip.js. Individual marks
-// are deliberately not keyboard-tabbable: with up to ~18 points across
-// two nations per chart, tabbing through each one would be tedious,
-// and the sr-only data table alongside each chart already gives
-// keyboard/screen-reader users the same numbers directly.
+// own "tap outside to dismiss" -- see useTooltip.js, and grows
+// slightly on hover for a bit of direct visual feedback. Individual
+// marks are deliberately not keyboard-tabbable: with up to ~18 points
+// across two nations per chart, tabbing through each one would be
+// tedious, and the sr-only data table alongside each chart already
+// gives keyboard/screen-reader users the same numbers directly.
 export function renderMetricChart(
   svg,
   { allRows, nations, valueField, chartType, format, showTooltip, hideTooltip }
@@ -77,27 +99,48 @@ export function renderMetricChart(
     .nice()
     .range([height - margin.bottom, margin.top])
 
-  const xAxisG = svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`)
-  if (isBand) {
-    xAxisG.call(d3.axisBottom(x).tickSizeOuter(0))
-  } else {
-    xAxisG.call(d3.axisBottom(x).ticks(4).tickFormat(d3.format('d')))
-  }
-  xAxisG.attr('font-size', 9)
-
-  svg
+  // Professional/"detailed" axis treatment: soft horizontal gridlines
+  // spanning the plot instead of d3's harsh default black axis lines,
+  // and no left-hand domain line at all -- the gridlines already imply
+  // it, so a second solid line alongside them just adds visual noise.
+  const yAxisG = svg
     .append('g')
     .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('~s')))
+    .call(
+      d3
+        .axisLeft(y)
+        .ticks(4)
+        .tickFormat(d3.format('~s'))
+        .tickSize(-(width - margin.left - margin.right))
+    )
+  yAxisG.select('.domain').remove()
+  yAxisG.selectAll('.tick line').attr('stroke', '#24333A').attr('stroke-opacity', 0.08)
+  yAxisG
+    .selectAll('.tick text')
+    .attr('fill', '#24333A')
+    .attr('fill-opacity', 0.65)
     .attr('font-size', 9)
+    .attr('dx', -2)
 
-  function wireMarkInteractions(selection, nation) {
+  const xAxisG = svg
+    .append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(isBand ? d3.axisBottom(x).tickSizeOuter(0) : d3.axisBottom(x).ticks(4).tickFormat(d3.format('d')))
+  xAxisG.select('.domain').attr('stroke', '#24333A').attr('stroke-opacity', 0.25)
+  xAxisG.selectAll('.tick line').attr('stroke', '#24333A').attr('stroke-opacity', 0.25)
+  xAxisG.selectAll('.tick text').attr('fill', '#24333A').attr('fill-opacity', 0.7).attr('font-size', 9)
+
+  function wireMarkInteractions(selection, nation, growTo) {
     selection
       .style('cursor', 'pointer')
-      .on('pointerenter pointermove', (event, d) =>
+      .on('pointerenter pointermove', function (event, d) {
         showTooltip(event, pointTooltip(nation, d.year, d[valueField], format))
-      )
-      .on('pointerleave', hideTooltip)
+        if (growTo) d3.select(this).transition().duration(motionDuration(120)).attr('r', growTo)
+      })
+      .on('pointerleave', function () {
+        hideTooltip()
+        if (growTo) d3.select(this).transition().duration(motionDuration(120)).attr('r', 3)
+      })
       .on('click', (event, d) => showTooltip(event, pointTooltip(nation, d.year, d[valueField], format)))
   }
 
@@ -115,17 +158,30 @@ export function renderMetricChart(
         .attr('width', x1.bandwidth())
         .attr('y', y(0))
         .attr('height', 0)
-        .attr('rx', 2)
+        .attr('rx', 3)
         .attr('fill', color(nation))
+        .attr('fill-opacity', 0.9)
+        .attr('stroke', 'transparent')
+        .attr('stroke-width', 1.5)
 
-      wireMarkInteractions(bars, nation)
+      wireMarkInteractions(bars, nation, null)
+      bars
+        .on('pointerenter.hl', function () {
+          d3.select(this).attr('stroke', color(nation)).attr('stroke-opacity', 0.4)
+        })
+        .on('pointerleave.hl', function () {
+          d3.select(this).attr('stroke', 'transparent')
+        })
 
+      // "Pop" up from the axis with a slight bounce -- reads as bars
+      // springing into place rather than just growing to a stop.
       bars
         .transition()
-        .duration(motionDuration(500))
-        .delay((_, i) => motionDuration(i * 40))
+        .duration(motionDuration(550))
+        .delay((_, i) => motionDuration(i * 45))
+        .ease(POP_EASE)
         .attr('y', (d) => y(d[valueField]))
-        .attr('height', (d) => y(0) - y(d[valueField]))
+        .attr('height', (d) => Math.max(y(0) - y(d[valueField]), 0))
     }
     return
   }
@@ -155,7 +211,7 @@ export function renderMetricChart(
         .attr('d', area)
         .transition()
         .duration(motionDuration(500))
-        .attr('fill-opacity', 0.22)
+        .attr('fill-opacity', 0.2)
     }
 
     const path = svg
@@ -163,7 +219,7 @@ export function renderMetricChart(
       .datum(series)
       .attr('fill', 'none')
       .attr('stroke', color(nation))
-      .attr('stroke-width', 2)
+      .attr('stroke-width', 2.25)
       .attr('stroke-linejoin', 'round')
       .attr('stroke-linecap', 'round')
       .attr('d', line)
@@ -192,13 +248,147 @@ export function renderMetricChart(
       .attr('cy', (d) => y(d[valueField]))
       .attr('r', 0)
       .attr('fill', color(nation))
+      .attr('stroke', '#FAF7F0')
+      .attr('stroke-width', 1.5)
 
-    wireMarkInteractions(points, nation)
+    wireMarkInteractions(points, nation, 5.5)
 
     points
       .transition()
       .delay(motionDuration(500))
-      .duration(motionDuration(200))
+      .duration(motionDuration(400))
+      .ease(POP_EASE)
       .attr('r', 3)
   }
+}
+
+// Storm-profile scatter: category-at-closest-approach (x) vs. deaths
+// (y), one point per nation -- see StormProfile.jsx. Deliberately a
+// single uniform colour/size for every point rather than a new hue per
+// nation: SELECTION_COLORS already means "pick 1 / pick 2" everywhere
+// else on the page (map, ripple chain), and reusing that vocabulary
+// here for an unrelated "which nation is which point" encoding would
+// contradict it. Position alone carries the message this chart exists
+// to make -- it doesn't need colour to do that job too.
+//
+// Width is deliberately narrow, same reasoning as CHART_WIDTH above:
+// on a phone, an SVG sized wider than its actual on-screen container
+// gets scaled DOWN by the browser (viewBox + w-full), which shrinks
+// every font-size inside it along with it -- a 520px-wide chart on a
+// ~330px-wide phone container renders its 9px labels at under 6px,
+// unreadable. Staying at or under a typical narrow-phone content width
+// means the chart is never scaled down, only ever scaled *up* on wider
+// screens, the same trade CHART_WIDTH already makes.
+export const STORM_CHART_WIDTH = 340
+export const STORM_CHART_HEIGHT = 210
+const STORM_CHART_MARGIN = { top: 16, right: 40, bottom: 34, left: 38 }
+const STORM_POINT_COLOR = '#5B8FA3' // same blue as the map's marker dots
+
+export function renderStormProfileChart(svg, { rows, showTooltip, hideTooltip }) {
+  const width = STORM_CHART_WIDTH
+  const height = STORM_CHART_HEIGHT
+  const margin = STORM_CHART_MARGIN
+
+  const x = d3.scaleLinear().domain([0.5, 5.5]).range([margin.left, width - margin.right])
+  const y = d3
+    .scaleLinear()
+    .domain([0, d3.max(rows, (d) => d.deaths) * 1.2])
+    .nice()
+    .range([height - margin.bottom, margin.top])
+
+  const yAxisG = svg
+    .append('g')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(
+      d3
+        .axisLeft(y)
+        .ticks(4)
+        .tickFormat(d3.format('d'))
+        .tickSize(-(width - margin.left - margin.right))
+    )
+  yAxisG.select('.domain').remove()
+  yAxisG.selectAll('.tick line').attr('stroke', '#24333A').attr('stroke-opacity', 0.08)
+  yAxisG
+    .selectAll('.tick text')
+    .attr('fill', '#24333A')
+    .attr('fill-opacity', 0.65)
+    .attr('font-size', 9)
+    .attr('dx', -2)
+
+  const xAxisG = svg
+    .append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format('d')))
+  xAxisG.select('.domain').attr('stroke', '#24333A').attr('stroke-opacity', 0.25)
+  xAxisG.selectAll('.tick line').attr('stroke', '#24333A').attr('stroke-opacity', 0.25)
+  xAxisG.selectAll('.tick text').attr('fill', '#24333A').attr('fill-opacity', 0.7).attr('font-size', 9)
+
+  svg
+    .append('text')
+    .attr('x', width / 2)
+    .attr('y', height - 6)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 9)
+    .attr('fill', '#24333A')
+    .attr('fill-opacity', 0.6)
+    .text('Storm category at closest approach')
+
+  svg
+    .append('text')
+    .attr('transform', `translate(12, ${height / 2}) rotate(-90)`)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 9)
+    .attr('fill', '#24333A')
+    .attr('fill-opacity', 0.6)
+    .text('Deaths')
+
+  // `dodge` is a rendering-only x nudge for Fiji/Tonga, which were both
+  // Category 4 at closest approach -- without it their points and
+  // labels would sit on top of each other. The category value in the
+  // tooltip and the sr-only table is the real, undodged number.
+  const points = svg
+    .selectAll('circle.storm-point')
+    .data(rows)
+    .join('circle')
+    .attr('class', 'storm-point')
+    .attr('cx', (d) => x(d.category + (d.dodge ?? 0)))
+    .attr('cy', (d) => y(d.deaths))
+    .attr('r', 0)
+    .attr('fill', STORM_POINT_COLOR)
+    .attr('fill-opacity', 0.85)
+    .attr('stroke', '#FAF7F0')
+    .attr('stroke-width', 1.5)
+    .style('cursor', 'pointer')
+    .on('pointerenter pointermove', function (event, d) {
+      showTooltip(event, stormPointTooltip(d))
+      d3.select(this).transition().duration(motionDuration(120)).attr('r', 9)
+    })
+    .on('pointerleave', function () {
+      hideTooltip()
+      d3.select(this).transition().duration(motionDuration(120)).attr('r', 6)
+    })
+    .on('click', (event, d) => showTooltip(event, stormPointTooltip(d)))
+
+  points
+    .transition()
+    .delay((_, i) => motionDuration(i * 90))
+    .duration(motionDuration(450))
+    .ease(POP_EASE)
+    .attr('r', 6)
+
+  svg
+    .selectAll('text.storm-label')
+    .data(rows)
+    .join('text')
+    .attr('class', 'storm-label')
+    .attr('x', (d) => x(d.category + (d.dodge ?? 0)) + 9)
+    .attr('y', (d) => y(d.deaths) - 9)
+    .attr('font-size', 9)
+    .attr('fill', '#24333A')
+    .attr('fill-opacity', 0)
+    .text((d) => d.name)
+    .transition()
+    .delay((_, i) => motionDuration(300 + i * 90))
+    .duration(motionDuration(300))
+    .attr('fill-opacity', 0.75)
 }

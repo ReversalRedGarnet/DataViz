@@ -15,7 +15,7 @@ export default function NoDataNote({ showTooltip, hideTooltip, className = '', c
   return (
     <span
       tabIndex={0}
-      className={`cursor-help underline decoration-dotted decoration-ink/40 outline-none ${className}`}
+      className={`data-note cursor-help underline decoration-dotted decoration-ink/40 ${className}`}
       onMouseEnter={(e) => showTooltip(e, EXPLANATION)}
       onMouseLeave={hideTooltip}
       onFocus={(e) => showTooltip(e, EXPLANATION)}

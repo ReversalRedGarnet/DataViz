@@ -13,11 +13,13 @@
 //
 // Props:
 //   sources -- array of { label, url }
+//   style -- forwarded onto the <footer>, used by App.jsx to stagger
+//     each section's entrance on first load
 const YEAR = new Date().getFullYear()
 
-export default function CitationPanel({ sources = [] }) {
+export default function CitationPanel({ sources = [], style }) {
   return (
-    <footer className="px-6 py-12 md:py-16 bg-ink text-sand">
+    <footer className="animate-pop-in px-6 py-12 md:py-16 bg-ink text-sand" style={style}>
       <div className="max-w-5xl mx-auto text-sm space-y-8">
         <div>
           <h2 className="font-semibold mb-2">Data sources</h2>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { METRICS } from '../utils/metrics.js'
 import { resetSvg } from '../utils/d3helpers.js'
 import { renderMetricChart, CHART_WIDTH, CHART_HEIGHT } from '../utils/chartRenderers.jsx'
+import { buildComparativeInsights } from '../utils/insights.js'
 import { useTooltip } from '../hooks/useTooltip.js'
 import Section from './Section.jsx'
 import SelectionLegend from './SelectionLegend.jsx'
@@ -21,7 +22,9 @@ import Tooltip from './Tooltip.jsx'
 //   selectedNations -- ordered array of nation names selected in
 //     MapView. Order matters here: it drives which colour each nation
 //     gets, kept in sync with the map's numbered badges.
-export default function RippleChain({ data, selectedNations }) {
+//   style -- forwarded to the underlying Section, used by App.jsx to
+//     stagger each section's entrance on first load
+export default function RippleChain({ data, selectedNations, style }) {
   const { containerRef, tooltip, showTooltip, hideTooltip } = useTooltip()
 
   // Filtering here (rather than inline in the METRICS.map below) and
@@ -43,18 +46,23 @@ export default function RippleChain({ data, selectedNations }) {
     return result
   }, [data, selectedNations])
 
-  if (!data) return <EmptyState>Ripple chain -- waiting on data.</EmptyState>
+  const insights = useMemo(() => {
+    if (!data || selectedNations.length !== 2) return null
+    return buildComparativeInsights(data, selectedNations[0], selectedNations[1])
+  }, [data, selectedNations])
+
+  if (!data) return <EmptyState style={style}>Ripple chain -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length === 0) {
-    return <EmptyState>Click a country on the map above to see its ripple chain.</EmptyState>
+    return <EmptyState style={style}>Click a country on the map above to see its ripple chain.</EmptyState>
   }
 
   return (
-    <Section className="animate-fade-in">
-      <div ref={containerRef} className="relative mx-auto max-w-2xl">
+    <Section style={style}>
+      <div ref={containerRef} className="relative mx-auto max-w-3xl">
         <h2 className="mb-2 text-xl font-semibold">The ripple chain</h2>
         <SelectionLegend selected={selectedNations} />
-        <div className="mt-2 grid grid-cols-1 gap-10">
-          {METRICS.map((m) => (
+        <div className="mt-2 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {METRICS.map((m, i) => (
             <MetricChart
               key={m.key}
               metric={m}
@@ -62,16 +70,44 @@ export default function RippleChain({ data, selectedNations }) {
               nations={selectedNations}
               showTooltip={showTooltip}
               hideTooltip={hideTooltip}
+              index={i}
+              spanFull={i === METRICS.length - 1 && METRICS.length % 2 !== 0}
             />
           ))}
         </div>
+
+        {insights && (
+          <div
+            className="animate-pop-in mt-8 rounded-xl border border-ink/10 bg-white/60 p-5"
+            style={{ animationDelay: '120ms' }}
+          >
+            <h3 className="mb-3 text-sm font-semibold">
+              {selectedNations[0]} vs. {selectedNations[1]}: similarities and differences
+            </h3>
+            <ul className="space-y-2 text-sm opacity-85">
+              {insights.map((insight, i) => (
+                <li
+                  key={insight.key}
+                  className="animate-pop-in flex gap-2"
+                  style={{ animationDelay: `${160 + i * 70}ms` }}
+                >
+                  <span aria-hidden="true" className="opacity-50">
+                    •
+                  </span>
+                  <span>{insight.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <Tooltip tooltip={tooltip} />
       </div>
     </Section>
   )
 }
 
-function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip }) {
+function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip, index, spanFull }) {
   const { key, label, field: valueField, chartType, format } = metric
   const ref = useRef(null)
   const nationsMissing = nations.filter((n) => !allRows.some((d) => d.nation === n))
@@ -84,15 +120,19 @@ function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip }) {
   }, [allRows, nations, valueField, chartType, format, showTooltip, hideTooltip])
 
   return (
-    <div key={key}>
-      <h3 className="mb-2 text-sm font-medium">{label}</h3>
+    <div
+      key={key}
+      className={`animate-pop-in rounded-xl border border-ink/10 bg-white/60 p-3 ${spanFull ? 'sm:col-span-2' : ''}`}
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <h3 className="mb-1 text-sm font-medium">{label}</h3>
       {allRows.length > 0 ? (
         <svg ref={ref} role="img" aria-label={label} className="h-auto w-full" />
       ) : (
         <NoDataNote
           showTooltip={showTooltip}
           hideTooltip={hideTooltip}
-          className="block py-8 text-center text-sm italic opacity-60"
+          className="block py-6 text-center text-sm italic opacity-70"
         >
           Data not available for this metric.
         </NoDataNote>
@@ -101,7 +141,7 @@ function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip }) {
         <NoDataNote
           showTooltip={showTooltip}
           hideTooltip={hideTooltip}
-          className="mt-1 inline-block text-xs italic opacity-60"
+          className="mt-1 inline-block text-xs italic opacity-70"
         >
           No data available for {nationsMissing.join(' and ')}.
         </NoDataNote>

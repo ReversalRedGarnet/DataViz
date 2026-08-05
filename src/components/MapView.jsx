@@ -51,7 +51,7 @@ function markerTooltipContent(nation, selected) {
     <>
       <p className="font-semibold">{nation.name}</p>
       <p className="opacity-80">{nation.blurb}</p>
-      <p className="mt-1 opacity-60">{status}</p>
+      <p className="mt-1 opacity-70">{status}</p>
     </>
   )
 }
@@ -60,7 +60,9 @@ function markerTooltipContent(nation, selected) {
 //   selected -- array of up to two nation names, in the order picked
 //   onToggle -- (name) => void, called on marker click / Enter / Space
 //   onClear -- () => void, clears the current selection
-export default function MapView({ selected, onToggle, onClear }) {
+//   style -- forwarded to the underlying Section, used by App.jsx to
+//     stagger each section's entrance on first load
+export default function MapView({ selected, onToggle, onClear, style }) {
   const svgRef = useRef(null)
   const gRef = useRef(null)
   const zoomRef = useRef(null)
@@ -236,12 +238,17 @@ export default function MapView({ selected, onToggle, onClear }) {
 
       // A little hover/focus "grow" on the dot itself -- cheap visual
       // feedback that something is interactive, on top of the tooltip.
+      // Shrinks back to whichever resting size is currently correct
+      // (8.5 if selected, 7 if not) via selectedRef, rather than a
+      // fixed value, since the selection-driven pop below can leave a
+      // marker at either size.
       marker
         .on('pointerenter.grow', function () {
-          d3.select(this).select('circle.marker-dot').attr('r', 9)
+          d3.select(this).select('circle.marker-dot').attr('r', 10)
         })
-        .on('pointerleave.grow', function () {
-          d3.select(this).select('circle.marker-dot').attr('r', 7)
+        .on('pointerleave.grow', function (event, d) {
+          const resting = selectedRef.current.includes(d.name) ? 8.5 : 7
+          d3.select(this).select('circle.marker-dot').attr('r', resting)
         })
     }
 
@@ -255,8 +262,9 @@ export default function MapView({ selected, onToggle, onClear }) {
 
   // Recolour markers and show a 1 / 2 badge on selection change, without
   // rebuilding the map (which would reset the user's pan/zoom position).
-  // Colour and badge fade/transition rather than snapping instantly, so
-  // picking a second country reads as one smooth handoff.
+  // Colour transitions and the dot gives a small bounce (overshoot past
+  // its resting size, then settle) rather than snapping instantly, so
+  // picking a country reads as a definite "pop" of confirmation.
   useEffect(() => {
     if (!gRef.current) return
     const markers = gRef.current.selectAll('g.marker')
@@ -270,6 +278,10 @@ export default function MapView({ selected, onToggle, onClear }) {
         const i = selected.indexOf(d.name)
         return i === -1 ? '#5B8FA3' : SELECTION_COLORS[i]
       })
+      .transition()
+      .duration(motionDuration(180))
+      .ease(d3.easeBackOut.overshoot(2.5))
+      .attr('r', (d) => (selected.includes(d.name) ? 8.5 : 7))
 
     markers
       .select('text.marker-badge')
@@ -296,7 +308,7 @@ export default function MapView({ selected, onToggle, onClear }) {
   }
 
   return (
-    <Section>
+    <Section style={style}>
       <h2 className="mb-2 text-xl font-semibold">Explore the Pacific</h2>
       <p className="mb-3 text-sm opacity-70">
         Tap a marker to select it, tap a second one to compare. Drag to pan, pinch to zoom, or use
@@ -313,7 +325,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={() => zoomBy(1.5)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Zoom in"
           >
             +
@@ -321,7 +333,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={() => zoomBy(1 / 1.5)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Zoom out"
           >
             −
@@ -329,7 +341,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={resetView}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-xs font-medium text-ink shadow-sm backdrop-blur-sm transition-all duration-150 ease-out hover:scale-110 hover:bg-white/70 active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-xs font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Reset view"
           >
             ⟲
@@ -342,7 +354,7 @@ export default function MapView({ selected, onToggle, onClear }) {
           <button
             type="button"
             onClick={onClear}
-            className="animate-fade-in text-sm opacity-70 underline transition-opacity duration-150 hover:opacity-100"
+            className="animate-pop-in text-sm opacity-70 underline transition-opacity duration-150 hover:opacity-100"
           >
             Clear selection
           </button>

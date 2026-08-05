@@ -1,3 +1,8 @@
+// Cyclone Harold, April 2020 -- the shared "before/after" anchor used
+// by ComparisonView and the comparative-insights bullets in
+// RippleChain. Kept here rather than duplicated in each file.
+export const EVENT_YEAR = 2020
+
 // Shared metric definitions used by RippleChain and ComparisonView.
 // Filenames match the DATASETS dict in data-pipeline/clean_data.py.
 //

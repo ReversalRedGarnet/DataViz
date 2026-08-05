@@ -1,4 +1,4 @@
-import { METRICS } from '../utils/metrics.js'
+import { METRICS, EVENT_YEAR } from '../utils/metrics.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
 import { useTooltip } from '../hooks/useTooltip.js'
 import Section from './Section.jsx'
@@ -14,20 +14,25 @@ import Tooltip from './Tooltip.jsx'
 // Props:
 //   data -- { [metricKey]: Array<{ nation, year, [field]: number }> }
 //   selectedNations -- ordered array of nation names selected in MapView
-const EVENT_YEAR = 2020 // Cyclone Harold, April 2020
-
-export default function ComparisonView({ data, selectedNations }) {
+//   style -- forwarded to the underlying Section, used by App.jsx to
+//     stagger each section's entrance on first load
+export default function ComparisonView({ data, selectedNations, style }) {
   const { containerRef, tooltip, showTooltip, hideTooltip } = useTooltip()
 
-  if (!data) return <EmptyState>Comparison -- waiting on data.</EmptyState>
+  if (!data) return <EmptyState tone="panel" style={style}>Comparison -- waiting on data.</EmptyState>
   if (!selectedNations || selectedNations.length < 2) {
-    return <EmptyState>Select a second country on the map to compare.</EmptyState>
+    return (
+      <EmptyState tone="panel" style={style}>
+        Select a second country on the map to compare.
+      </EmptyState>
+    )
   }
 
   return (
-    <Section className="animate-fade-in">
+    <Section tone="panel" style={style}>
       <div ref={containerRef} className="relative">
-        <h2 className="mb-6 text-xl font-semibold">Compare recovery</h2>
+        <h2 className="mb-1 text-xl font-semibold">Compare recovery</h2>
+        <p className="mb-6 text-sm opacity-70">Event year ({EVENT_YEAR}) versus the latest year on record.</p>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {selectedNations.map((nation, i) => (
             <NationSummary
@@ -35,6 +40,7 @@ export default function ComparisonView({ data, selectedNations }) {
               nation={nation}
               data={data}
               color={SELECTION_COLORS[i]}
+              index={i}
               showTooltip={showTooltip}
               hideTooltip={hideTooltip}
             />
@@ -46,11 +52,20 @@ export default function ComparisonView({ data, selectedNations }) {
   )
 }
 
-function NationSummary({ nation, data, color, showTooltip, hideTooltip }) {
+function pctChange(from, to) {
+  if (!from) return null
+  return ((to - from) / Math.abs(from)) * 100
+}
+
+function NationSummary({ nation, data, color, index, showTooltip, hideTooltip }) {
   return (
-    <div className="rounded-2xl border-l-4 bg-white/70 p-6" style={{ borderColor: color }}>
-      <h3 className="mb-4 text-lg font-semibold">{nation}</h3>
-      <ul className="space-y-3 text-sm">
+    <div
+      className="animate-pop-in rounded-2xl border-t-4 bg-white/80 p-6 shadow-sm"
+      style={{ borderColor: color, animationDelay: `${index * 100}ms` }}
+    >
+      <h3 className="text-lg font-semibold">{nation}</h3>
+      <p className="mb-4 text-xs uppercase tracking-wide opacity-70">Since {EVENT_YEAR}</p>
+      <ul className="divide-y divide-ink/10 text-sm">
         {METRICS.map((m) => {
           const rows = (data[m.key] ?? [])
             .filter((d) => d.nation === nation)
@@ -59,17 +74,15 @@ function NationSummary({ nation, data, color, showTooltip, hideTooltip }) {
           const latestRow = rows[rows.length - 1]
 
           return (
-            <li key={m.key} className="flex justify-between gap-4">
+            <li key={m.key} className="flex items-center justify-between gap-4 py-2.5">
               <span className="opacity-70">{m.label}</span>
               {eventRow && latestRow ? (
-                <span>
-                  {m.format(eventRow[m.field])} → {m.format(latestRow[m.field])}
-                </span>
+                <Delta metric={m} eventRow={eventRow} latestRow={latestRow} />
               ) : (
                 <NoDataNote
                   showTooltip={showTooltip}
                   hideTooltip={hideTooltip}
-                  className="text-xs italic opacity-50"
+                  className="text-xs italic opacity-70"
                 >
                   No data available
                 </NoDataNote>
@@ -79,5 +92,30 @@ function NationSummary({ nation, data, color, showTooltip, hideTooltip }) {
         })}
       </ul>
     </div>
+  )
+}
+
+// One metric's row: the raw before/after figures plus a compact
+// direction + magnitude badge. Deliberately ink-only (a triangle
+// glyph carries the direction, not a red/green colour pairing) so this
+// doesn't reintroduce a colour-coding scheme on top of the one the
+// rest of the page already uses for nation selection.
+function Delta({ metric, eventRow, latestRow }) {
+  const from = eventRow[metric.field]
+  const to = latestRow[metric.field]
+  const pct = pctChange(from, to)
+
+  return (
+    <span className="flex flex-col items-end">
+      <span className="font-medium tabular-nums">
+        {metric.format(from)} <span className="opacity-40">→</span> {metric.format(to)}
+      </span>
+      {pct !== null && (
+        <span className="mt-0.5 flex items-center gap-1 text-xs font-medium opacity-70">
+          <span aria-hidden="true">{pct >= 0 ? '▲' : '▼'}</span>
+          {Math.abs(pct).toFixed(0)}%
+        </span>
+      )}
+    </span>
   )
 }
