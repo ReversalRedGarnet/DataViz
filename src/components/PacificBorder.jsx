@@ -1,50 +1,74 @@
-// A simple, original geometric wave-crest motif -- NOT a reproduction
-// of any specific traditional Pacific textile or art pattern (e.g.
-// tapa/masi/ngatu design); those belong to specific communities and
-// shouldn't be lifted generically. It's a generic zigzag evoking ocean
-// waves, in the site's own palette.
+// A smooth curling wave-and-spiral motif -- an original design (not a
+// reproduction of any specific traditional Pacific textile or art
+// pattern; those belong to specific communities and shouldn't be
+// lifted generically), built from the person's own hand-drawn sketch:
+// waves that are also spirals, breaking at the crest. Replaces the
+// earlier straight zigzag with an actual smooth curve plus a small
+// hand-parametrised curl at each crest.
 //
-// This is a genuine two-tone divider between sections, not a
-// decorative strip floating on a blank background: `colorAbove` fills
-// the region up to the wave line, `colorBelow` fills the region below
-// it. Whatever background colour a section carries (see Section.jsx
-// tones) ends exactly at this shape's wave edge, and the next
-// section's colour picks up exactly where the wave leaves off -- the
-// wave itself *is* the seam, rather than colour needing a flat, exact
-// cut that would have to line up pixel-perfectly with a separate
-// border element.
-const TILE_WIDTH = 20
-const TILE_COUNT = 20 // 20 * 20 = 400, matching the original viewBox width
-const BASELINE_Y = 12
-const CREST_Y = 4
+// Still a genuine two-tone divider between sections, exactly as
+// before: `colorAbove` fills the whole strip, then `colorBelow` is
+// painted over just the region below the wave line -- so the wave
+// itself is the seam between one section's background and the next's,
+// rather than a separate border element that would need to line up
+// pixel-perfectly with a flat colour cut.
+const TILE_WIDTH = 40
+const TILE_COUNT = 10 // 40 * 10 = 400, matching the original total width
+const BASELINE_Y = 16
+const CREST_Y = 7
 const VIEW_WIDTH = TILE_WIDTH * TILE_COUNT
-const VIEW_HEIGHT = 16
+const VIEW_HEIGHT = 20
+const WAVE_STROKE = '#5B8FA3' // same ocean blue as the map markers and storm-profile points
 
-// The wave line itself, left to right -- identical zigzag shape to the
-// original hand-written pattern tile (baseline -> crest -> baseline,
-// twice per 20-unit tile), just generated once across the full width
-// instead of repeated as an SVG <pattern>, so it can bound two fill
-// regions instead of only being stroked.
-function buildWavePoints() {
-  const points = [[0, BASELINE_Y]]
+// The wave line itself as a sequence of cubic-bezier "swells" -- a
+// smooth curve rather than the old sharp zigzag, so it reads as water
+// rising and falling instead of a saw-tooth. Returns just the C
+// commands (no leading M), since both the visible stroke and the fill
+// region below it need to start from the same point but are used
+// slightly differently (see WAVE_LINE_PATH / BOTTOM_REGION_PATH).
+function buildWaveCommands() {
+  let d = ''
   for (let i = 0; i < TILE_COUNT; i++) {
     const x0 = i * TILE_WIDTH
-    points.push([x0 + 5, CREST_Y])
-    points.push([x0 + 10, BASELINE_Y])
-    points.push([x0 + 15, CREST_Y])
-    points.push([x0 + 20, BASELINE_Y])
+    const cx1 = x0 + TILE_WIDTH * 0.25
+    const xMid = x0 + TILE_WIDTH * 0.5
+    const cx2 = x0 + TILE_WIDTH * 0.75
+    const x1 = x0 + TILE_WIDTH
+    d += `C ${cx1},${BASELINE_Y} ${cx1},${CREST_Y} ${xMid},${CREST_Y} `
+    d += `C ${cx2},${CREST_Y} ${cx2},${BASELINE_Y} ${x1},${BASELINE_Y} `
   }
-  return points
+  return d
 }
 
-const WAVE_POINTS = buildWavePoints()
-const WAVE_FORWARD = WAVE_POINTS.map(([x, y]) => `${x},${y}`).join(' ')
-const WAVE_BACKWARD = [...WAVE_POINTS].reverse().map(([x, y]) => `${x},${y}`).join(' ')
+// A small curl sitting right at each wave crest -- the "waves that are
+// also spirals, breaking" detail from the original sketch. A genuine
+// hand-parametrised spiral (radius growing with angle from the crest
+// point outward), not a fixed decorative shape, so one function draws
+// all ten identically. Radius and turn count were tuned by actually
+// rendering this to an image and checking it stayed within the
+// viewBox -- an earlier draft's curl poked out above y=0, which would
+// have bled into the section above it.
+function buildCurlPath(cx, cy) {
+  const turns = 1.15
+  const rMax = 3.2
+  const steps = 28
+  let d = ''
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const theta = t * turns * 2 * Math.PI
+    const r = rMax * t
+    const x = cx + r * Math.cos(theta)
+    const y = cy - r * Math.sin(theta)
+    d += i === 0 ? `M ${x.toFixed(2)},${y.toFixed(2)} ` : `L ${x.toFixed(2)},${y.toFixed(2)} `
+  }
+  return d
+}
 
-// Region above the wave line (top rectangle down to the wave).
-const TOP_REGION = `0,0 ${VIEW_WIDTH},0 ${WAVE_BACKWARD}`
-// Region below the wave line (wave down to the bottom rectangle).
-const BOTTOM_REGION = `${WAVE_FORWARD} ${VIEW_WIDTH},${VIEW_HEIGHT} 0,${VIEW_HEIGHT}`
+const WAVE_LINE_PATH = `M 0,${BASELINE_Y} ${buildWaveCommands()}`
+const BOTTOM_REGION_PATH = `${WAVE_LINE_PATH} L ${VIEW_WIDTH},${VIEW_HEIGHT} L 0,${VIEW_HEIGHT} Z`
+const CURL_PATHS = Array.from({ length: TILE_COUNT }, (_, i) =>
+  buildCurlPath(i * TILE_WIDTH + TILE_WIDTH * 0.5, CREST_Y)
+)
 
 // Props:
 //   colorAbove / colorBelow -- real hex values (see theme.js
@@ -59,16 +83,12 @@ export default function PacificBorder({ colorAbove = '#FAF7F0', colorBelow = '#F
       preserveAspectRatio="none"
       className="block h-4 w-full"
     >
-      <polygon points={TOP_REGION} fill={colorAbove} />
-      <polygon points={BOTTOM_REGION} fill={colorBelow} />
-      <polyline
-        points={WAVE_FORWARD}
-        fill="none"
-        stroke="#5B8FA3"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect x="0" y="0" width={VIEW_WIDTH} height={VIEW_HEIGHT} fill={colorAbove} />
+      <path d={BOTTOM_REGION_PATH} fill={colorBelow} />
+      <path d={WAVE_LINE_PATH} fill="none" stroke={WAVE_STROKE} strokeWidth="1.6" strokeLinecap="round" />
+      {CURL_PATHS.map((d, i) => (
+        <path key={i} d={d} fill="none" stroke={WAVE_STROKE} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+      ))}
     </svg>
   )
 }
