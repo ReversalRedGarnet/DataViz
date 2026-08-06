@@ -8,29 +8,6 @@ import { renderSnapshotChart, CHART_WIDTH, CHART_HEIGHT } from '../utils/chartRe
 import { NATIONS } from './MapView.jsx'
 import { EVENT_YEAR, METRICS } from '../utils/metrics.js'
 
-// Static, selection-independent overview -- deliberately visible no
-// matter what the person picks on the map below. The map and charts
-// only ever show one or two nations at a time; without this, the
-// region-wide picture (one cyclone, four very different outcomes) is
-// easy to lose since the page never otherwise states it plainly on
-// its own. Every number here is computed from the same loaded dataset
-// the rest of the page uses -- nothing here is hardcoded, so it can't
-// drift out of sync if the data pipeline is ever rerun.
-//
-// The snapshot grid below the stat tiles is the same idea taken
-// further: one bar chart per metric, all four nations, all pinned to
-// EVENT_YEAR with no time axis at all -- unlike the ripple-chain
-// charts further down the page (which show change over years for
-// whichever nation(s) are selected), this is deliberately a single
-// frozen moment, always showing all four nations regardless of
-// selection. Complements rather than duplicates the ripple chain: one
-// answers "how did this nation change over time", the other answers
-// "how did all four nations compare at the same moment".
-//
-// Props:
-//   data -- same shape as everywhere else: { [metricKey]: rows[] }
-//   style -- forwarded to the underlying Section, used by App.jsx to
-//     stagger each section's entrance on first load
 export default function BigPicture({ data, style }) {
   const stats = useMemo(() => computeStats(data), [data])
   const snapshots = useMemo(() => computeSnapshots(data), [data])
@@ -39,13 +16,26 @@ export default function BigPicture({ data, style }) {
   return (
     <Section tone="panel" style={style}>
       <div ref={containerRef} className="relative">
-        <h2 className="mb-2 text-xl font-semibold">The bigger picture</h2>
-        <p className="max-w-2xl text-sm opacity-80">
-          Cyclone Harold crossed Fiji, Solomon Islands, Tonga, and Vanuatu within the same week in
-          April {EVENT_YEAR}. It was one hazard, but the four nations it passed through went into it
-          with very different resources -- and came out the other side with very different
-          outcomes. That gap, not the storm itself, is what the charts below are really about.
-        </p>
+        <h2 className="mb-2 text-xl font-semibold">The Bigger Picture</h2>
+
+<div className="max-w-2xl space-y-3 text-sm opacity-80">
+  <p>
+    Cyclone Harold was a shared disaster, but recovery was shaped by far more than the
+    storm itself. Population size, infrastructure, economic capacity, and national
+    preparedness all influenced how each country experienced its aftermath.
+  </p>
+
+  <p>
+    Rather than focusing on one nation at a time, this section compares the region as a
+    whole. By looking at key indicators side by side, patterns begin to emerge that are
+    difficult to see in isolation.
+  </p>
+
+  <p>
+    Together, these snapshots provide a foundation for the detailed comparisons explored
+    throughout the rest of this project.
+  </p>
+</div>
 
         {stats ? (
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -80,11 +70,14 @@ export default function BigPicture({ data, style }) {
 
         {snapshots && (
           <div className="mt-8">
-            <h3 className="mb-1 text-sm font-semibold">Every nation, every metric, {EVENT_YEAR}</h3>
-            <p className="mb-3 max-w-2xl text-sm opacity-80">
-              Not change over time -- the same {EVENT_YEAR} snapshot, side by side, one bar per
-              nation. The gap between the bars is the only thing each chart is showing.
-            </p>
+           <h3 className="mb-1 text-sm font-semibold">
+  Regional Snapshot — {EVENT_YEAR}
+</h3>
+           <p className="mb-3 max-w-2xl text-sm opacity-80">
+  Each chart presents a single snapshot from {EVENT_YEAR}, allowing all four nations to
+  be compared under the same conditions. Rather than showing change over time, the focus
+  here is on the differences between countries at the same moment.
+</p>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               {METRICS.map((m, i) => (
                 <MetricSnapshot
