@@ -26,21 +26,18 @@ export default function Hero({ style }) {
   return (
     <Section className="text-center" style={style}>
       <p className="mx-auto max-w-2xl text-sm font-semibold uppercase tracking-wide opacity-70">
-        March 2019 — one cyclone, four islands
+        April 2020 · One cyclone. Four nations. Four different outcomes.
       </p>
       <h1 className="mx-auto mt-3 max-w-3xl text-3xl font-bold md:text-5xl">
-        The storm chose a path. Everything else was already decided before it arrived.
+        Cyclone Harold followed one path across the Pacific. Recovery did not.
       </h1>
       <p className="mx-auto mt-5 max-w-2xl text-lg opacity-80">
-        Cyclone Reva made landfall on Kalevu on 14 March 2019 as a Category 5 storm — sustained
-        winds of 215 km/h, the strongest system on record there. It crossed Isaura two days later
-        at Category 3, then passed 90km offshore of Ovanu without making landfall at all. Off
-        Tempoa Islands, a passenger ferry evacuating ahead of the storm's outer bands capsized — 19
-        people died, more than the other three islands combined, days before Reva reached its peak
-        strength.
+        When Tropical Cyclone Harold swept across the South Pacific in April 2020, it affected Solomon Islands, Vanuatu, Fiji, and Tonga within a matter of days. Although these nations experienced the same storm, the consequences varied significantly.
+Differences in population, geography, infrastructure, economic resilience, and emergency preparedness shaped how communities responded and recovered. Some countries faced widespread infrastructure damage, while others experienced greater economic disruption or longer recovery periods.
+This data story explores how a single natural hazard produced very different outcomes, using interactive visualizations to compare impact, recovery, and resilience across the region.
       </p>
       <p className="mx-auto mt-4 max-w-2xl text-lg font-medium opacity-80">
-        Ovanu was barely touched by the wind. Watch what happened to it anyway.
+        Scroll to follow the storm's journey.
       </p>
     </Section>
   )
