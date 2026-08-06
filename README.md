@@ -109,7 +109,7 @@ All sources were exported manually as CSV from [stats.pacificdata.org](https://s
 
 ## Current Status
 
-Built, and through two rounds of UI/UX polish — tooltips, motion, per-metric chart types, the "Big Picture" section, comparative insights, and two-tone section dividers. Left before submission: rewriting the Hero framing copy to name Cyclone Harold directly, a fresh accessibility/mobile pass, and deploying to a public host — none of which are done yet.
+Built, deployed to Vercel, and through two rounds of UI/UX polish — tooltips, motion, per-metric chart types, the "Big Picture" section, comparative insights, two-tone section dividers, and the Hero framing copy naming Cyclone Harold directly. A further pass addressed a sitewide header/typography cleanup and a horizontal-overflow bug. Left before submission: a fresh accessibility/mobile pass, and final competition submission.
 
 ---
 

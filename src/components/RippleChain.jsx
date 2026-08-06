@@ -147,8 +147,16 @@ function MetricChart({ metric, allRows, nations, showTooltip, hideTooltip, index
         </NoDataNote>
       )}
       {/* Screen-reader-only data table -- the chart above conveys shape
-          and trend visually, this gives the same numbers as text. */}
-      <table className="sr-only">
+          and trend visually, this gives the same numbers as text.
+
+          whitespace-normal overrides the nowrap .sr-only sets (and
+          which inherits into every cell) -- see the matching comment
+          in StormProfile.jsx for why an inherited nowrap on a table
+          can silently blow out the whole page's width. Nothing here
+          is long enough to trigger it today, but the mechanism is
+          identical, so it gets the same defensive fix rather than
+          waiting for a future data value to be the one that does. */}
+      <table className="sr-only whitespace-normal">
         <caption>{label} by year and country</caption>
         <thead>
           <tr>

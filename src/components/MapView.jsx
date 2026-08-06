@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { feature } from 'topojson-client'
 import Section from './Section.jsx'
 import Tooltip from './Tooltip.jsx'
+import MapControlIcon from './MapControlIcon.jsx'
 import { useTooltip } from '../hooks/useTooltip.js'
 import { SELECTION_COLORS } from '../utils/theme.js'
 import { resetSvg } from '../utils/d3helpers.js'
@@ -170,7 +171,6 @@ export default function MapView({ selected, onToggle, onClear, style }) {
           const [x, y] = projection([d.lon, d.lat])
           return `translate(${x},${y})`
         })
-        .style('cursor', 'pointer')
         .attr('role', 'button')
         .attr('tabindex', 0)
         .attr('aria-label', (d) => `Select ${d.name}`)
@@ -315,36 +315,62 @@ export default function MapView({ selected, onToggle, onClear, style }) {
         the buttons.
       </p>
       <div ref={containerRef} className="relative">
+        {/* overflow-hidden is required, not decorative -- the ocean
+            background rect below is deliberately drawn far past the
+            viewBox (see the +/-2000/4000 rect in the setup effect) so
+            panning never reveals empty space. Without an explicit
+            clip, that oversized rect's own unclipped layout box was
+            what was actually pushing the whole page into horizontal
+            overflow on every screen size: an SVG's viewBox scales
+            what's drawn, but doesn't by itself guarantee the browser
+            clips content past it, and a descendant's laid-out
+            dimensions still count toward the page's scrollable area
+            even where they're painted over/invisible. This also
+            happens to be needed for the rounded-2xl corners below to
+            actually round the map's contents, not just its border. */}
         <svg
           ref={svgRef}
           role="img"
           aria-label="Map of the Pacific with four selectable nations"
-          className="h-auto w-full rounded-2xl border-2 border-ink/15 shadow-sm"
+          className="h-auto w-full overflow-hidden rounded-2xl border-2 border-ink/15 shadow-sm"
         />
-        <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
+        {/* Top-right, not bottom-right: Tonga's marker sits in the
+            map's bottom-right quadrant (see NATIONS above), close
+            enough to the corner that the taller 44px button column
+            (see the touch-target note below) started covering its
+            label. Nothing occupies the top-right quadrant, so the
+            controls sit there instead rather than shrinking back
+            down to reclaim the corner. */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1.5">
+          {/* 44px (h-11 w-11), not the 36px these used to be -- the
+              commonly-cited comfortable minimum touch target size, and
+              the one real ergonomics gap the mobile pass turned up:
+              these are the only tap targets on the page smaller than
+              that, on the one section where a mis-tap (zooming instead
+              of panning) is most disruptive. */}
           <button
             type="button"
             onClick={() => zoomBy(1.5)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/50 shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Zoom in"
           >
-            +
+            <MapControlIcon kind="zoomIn" />
           </button>
           <button
             type="button"
             onClick={() => zoomBy(1 / 1.5)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-lg font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/50 shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Zoom out"
           >
-            −
+            <MapControlIcon kind="zoomOut" />
           </button>
           <button
             type="button"
             onClick={resetView}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-xs font-medium text-ink shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/50 shadow-sm backdrop-blur-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 hover:bg-white/70 active:scale-90"
             aria-label="Reset view"
           >
-            ⟲
+            <MapControlIcon kind="reset" />
           </button>
         </div>
         <Tooltip tooltip={tooltip} />

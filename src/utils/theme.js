@@ -20,3 +20,14 @@ export const SECTION_COLORS = {
   panel: '#F1EADC', // a slightly deeper, warm neutral -- used sparingly for the two "editorial" sections (BigPicture, Compare recovery) so they read as a distinct panel without introducing a new hue
   ink: '#24333A', // == tailwind 'ink', the footer's background
 }
+
+// Decorative accent for the fish border motif (FishBorder.jsx) and the
+// spear cursor's highlight edge -- deliberately NOT a new, unrelated
+// hue. It's ink and sand blended at 60/40, i.e. literally made out of
+// two colours already in the palette, which is why the same tone
+// works for both: one accent shared across two decorative touches
+// reads as one deliberate choice rather than each picking its own
+// colour independently. Contrast against sand: ~3.7:1; against panel:
+// ~3.3:1 -- visible as a pattern without needing WCAG text-contrast
+// levels, since it's decorative rather than load-bearing information.
+export const PEWTER = '#7A8183'

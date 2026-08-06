@@ -2,9 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* TYPE SCALE -- the small set of text roles reused across every
+   section, so a heading in BigPicture and a heading in MapView read
+   as the same design decision rather than two independent guesses.
+   New copy anywhere on the site should reach for one of these rather
+   than inventing a new size/weight/tracking combination:
+
+     Display (Hero's thesis only)   text-3xl md:text-5xl font-bold tracking-tight
+     Wordmark (Header only)         text-lg md:text-xl font-semibold tracking-tight
+     Section heading (h2)           text-xl font-semibold
+     Card/sub-heading (h3/h4)       text-sm font-medium  (or font-semibold for a
+                                     card that itself groups other cards, e.g.
+                                     the "Regional Snapshot" / insights headers)
+     Eyebrow (section-level framing, e.g. Hero's kicker)
+                                     text-sm font-semibold uppercase tracking-wide opacity-70
+     Meta label (card-level metadata, e.g. a stat tile's label)
+                                     text-xs uppercase tracking-wide opacity-70
+     Body copy                      text-sm opacity-80
+     Helper / secondary text        text-sm opacity-70 */
+
 @layer base {
   body {
-    @apply bg-sand text-ink;
+    @apply bg-sand text-ink antialiased;
+    /* Belt-and-braces guard, not a fix in itself -- the actual overflow
+       source (ScrollProgress sizing itself off window.innerWidth,
+       which includes the scrollbar) is fixed at the component level.
+       This stays as a backstop so a future fixed/absolute element that
+       drifts a few pixels too wide can't reintroduce a sitewide
+       horizontal scrollbar; it should never be the thing actually
+       doing the clipping. */
+    overflow-x: hidden;
+  }
+
+  /* Site-wide custom cursor. !important is required, not just belt-
+     and-braces: the map markers used to set cursor via a D3 *inline*
+     style, and inline styles beat any external stylesheet rule
+     regardless of specificity short of !important. That inline rule
+     has been removed (see MapView.jsx), but !important stays as a
+     guarantee against anything else -- present or future -- reverting
+     to the OS pointer on hover, per the site's actual requirement. */
+  *,
+  *::before,
+  *::after {
+    cursor: url('/cursors/spear.svg') 2 2, auto !important;
+  }
+
+  /* Matching text-selection highlight, since the OS default blue would
+     be the one remaining unstyled system chrome on the page. */
+  ::selection {
+    background-color: #5b8fa3;
+    color: #faf7f0;
   }
 
   /* Visible keyboard focus ring for the SVG map markers, since browsers

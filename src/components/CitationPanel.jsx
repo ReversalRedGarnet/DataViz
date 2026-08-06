@@ -20,11 +20,18 @@ const YEAR = new Date().getFullYear()
 export default function CitationPanel({ sources = [], style }) {
   return (
     <footer className="animate-pop-in px-6 py-12 md:py-16 bg-ink text-sand" style={style}>
+      {/* Headings styled as the site's "meta label" role (uppercase,
+          tracked, text-sm) rather than the text-xl section-heading
+          role used above the fold -- that's a deliberate size step
+          down for a footer, not the unstyled default an <h2> falls
+          back to without an explicit size (which is what these
+          rendered as before: 14px inherited from the wrapping div's
+          text-sm, no weight distinction from body text). */}
       <div className="max-w-5xl mx-auto text-sm space-y-8">
         <div>
-          <h2 className="font-semibold mb-2">Data sources</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide">Data sources</h2>
           {sources.length === 0 ? (
-            <p className="text-sand/60">TODO: list official + supporting datasets here.</p>
+            <p className="text-sand/60">No data sources listed yet.</p>
           ) : (
             <ul className="space-y-1">
               {sources.map((s) => (
@@ -39,7 +46,7 @@ export default function CitationPanel({ sources = [], style }) {
         </div>
 
         <div>
-          <h2 className="font-semibold mb-2">About this data</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide">About this data</h2>
           <p className="text-sand/85">
             Figures are drawn from official Pacific Data Hub statistics for Solomon Islands,
             Vanuatu, Fiji, and Tonga. Data coverage varies by country and metric — direct

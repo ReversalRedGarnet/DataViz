@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Hero from './components/Hero.jsx'
 import StormProfile from './components/StormProfile.jsx'
 import BigPicture from './components/BigPicture.jsx'
@@ -6,6 +7,7 @@ import RippleChain from './components/RippleChain.jsx'
 import ComparisonView from './components/ComparisonView.jsx'
 import CitationPanel from './components/CitationPanel.jsx'
 import PacificBorder from './components/PacificBorder.jsx'
+import Header from './components/Header.jsx'
 import { useSelection } from './hooks/useSelection.js'
 import { useRippleData } from './hooks/useRippleData.js'
 import { SECTION_COLORS } from './utils/theme.js'
@@ -70,11 +72,14 @@ function selectionAnnouncement(selected) {
 export default function App() {
   const data = useRippleData()
   const { selected, toggle, clear } = useSelection()
+  const [headerHeight, setHeaderHeight] = useState(0)
 
   const [heroTone, stormTone, bigPictureTone, mapTone, rippleTone, comparisonTone] = SECTION_TONES
 
   return (
     <>
+      <Header onHeightChange={setHeaderHeight} />
+
       {/* Visually hidden until focused -- lets keyboard users jump past
           the map straight to the charts without tabbing through every
           marker first. */}
@@ -92,7 +97,7 @@ export default function App() {
         {selectionAnnouncement(selected)}
       </div>
 
-      <main id="main-content" className="min-h-screen">
+      <main id="main-content" className="min-h-screen" style={{ paddingTop: headerHeight }}>
         <Hero style={delayStyle(0)} />
         <PacificBorder colorAbove={SECTION_COLORS[heroTone]} colorBelow={SECTION_COLORS[stormTone]} />
         <StormProfile style={delayStyle(1)} />

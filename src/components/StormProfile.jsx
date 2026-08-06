@@ -5,31 +5,6 @@ import { useTooltip } from '../hooks/useTooltip.js'
 import { resetSvg } from '../utils/d3helpers.js'
 import { renderStormProfileChart, STORM_CHART_WIDTH, STORM_CHART_HEIGHT } from '../utils/chartRenderers.jsx'
 
-// One cyclone, four categories at the moment it passed each nation --
-// and an outcome that doesn't track them. Sits right after Hero, before
-// BigPicture: this is the hazard itself, on its own terms, before the
-// ripple chain gets into what it did to each economy.
-//
-// A hardcoded, single-event dataset rather than something pulled
-// through the JSON pipeline -- these are storm-track facts (one
-// reading per nation, not a time series), the same kind of thing
-// MapView.jsx's NATIONS array already does for the blurb text. Sources
-// (Australian Bureau of Meteorology's official cyclone history, UN
-// OCHA/ReliefWeb situation reports) are supplementary, not from the
-// official Pacific Data Hub list -- see README.md -> "Data Sources".
-//
-// Deliberately does NOT chart wind speed or rainfall: reported figures
-// use different measurement conventions country to country (10-minute
-// vs. 1-minute sustained winds, gusts vs. sustained, a couple of
-// scattered station readings for rainfall) and aren't safely
-// comparable on one axis. Category at closest approach is the one
-// reading all four nations share a defensible, consistent figure for.
-//
-// `dodge` nudges Fiji/Tonga's rendered x position apart -- both were
-// Category 4 at closest approach, so without it their points/labels
-// would sit on top of each other. It's rendering-only: the category
-// shown in the tooltip and the table below is the real, undodged
-// value.
 export const STORM_PROFILE = [
   {
     name: 'Solomon Islands',
@@ -81,11 +56,29 @@ export default function StormProfile({ style }) {
   return (
     <Section style={style}>
       <div ref={containerRef} className="relative mx-auto max-w-3xl">
-        <h2 className="mb-2 text-xl font-semibold">The storm itself</h2>
-        <p className="max-w-2xl text-sm opacity-80">
-          Harold didn't hit all four nations the same way. Category and wind speed varied along
-          its path -- but they don't explain what happened next.
-        </p>
+        <h2 className="mb-2 text-xl font-semibold">Cyclone Harold at a Glance</h2>
+
+<div className="max-w-2xl space-y-3 text-sm opacity-80">
+  <p>
+    Tropical Cyclone Harold was one of the strongest storms of the 2020 South Pacific
+    cyclone season. Between 2 and 10 April 2020, it tracked across Solomon Islands,
+    Vanuatu, Fiji, and Tonga, bringing destructive winds, heavy rainfall, storm surges,
+    and widespread flooding.
+  </p>
+
+  <p>
+    Although Harold was the same weather system throughout its journey, its intensity
+    changed over time. Some countries experienced a direct Category 5 landfall, while
+    others encountered a weaker system or were affected primarily by rough seas and
+    coastal flooding.
+  </p>
+
+  <p>
+    The chart below compares Cyclone Harold's strength at its closest approach to each
+    nation against the reported loss of life. It introduces an important observation:
+    stronger storms do not always produce the greatest human impact.
+  </p>
+</div>
 
         <svg
           ref={ref}
@@ -95,15 +88,28 @@ export default function StormProfile({ style }) {
         />
 
         <p className="mt-3 max-w-2xl text-sm font-medium">
-          The deadliest single event of the whole cyclone happened during its weakest documented
-          phase, not its strongest: 27 lives lost when a ferry was overwhelmed off the Solomon
-          Islands -- more than Vanuatu, Fiji, and Tonga combined.
-        </p>
+  One of the most striking findings is that the cyclone's deadliest single event occurred
+  while Harold was at its weakest documented phase. Twenty-seven people lost their lives
+  when the passenger ferry <em>MV Taimareho</em> was overwhelmed off Solomon Islands—
+  more than the combined death toll recorded in Vanuatu, Fiji, and Tonga.
+</p>
 
         {/* Screen-reader-only data table -- same pattern as RippleChain:
             the chart above conveys the shape, this gives the same
-            numbers as text. */}
-        <table className="sr-only">
+            numbers as text.
+
+            whitespace-normal overrides the nowrap that .sr-only sets
+            (and which inherits down into every cell): the "Local
+            detail" column below holds full prose sentences, and
+            table layout doesn't let a table's rendered width shrink
+            below its content's min-content width -- with nowrap
+            inherited, that min-content width was the length of the
+            single longest unbroken sentence, which stretched this
+            table (and, since it's position:absolute, the whole page)
+            to roughly 2000px wide on every screen size, invisibly.
+            Letting the text wrap keeps min-content down to the
+            longest unbreakable *word* instead. */}
+        <table className="sr-only whitespace-normal">
           <caption>Cyclone Harold: category at closest approach and deaths, by nation</caption>
           <thead>
             <tr>
